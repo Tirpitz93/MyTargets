@@ -1,17 +1,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
               xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical"
               tools:context="de.dreier.mytargets.activities.SimpleFragmentActivity.EditTrainingActivity">
 
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/colorPrimary"
-        android:minHeight="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
+    <include layout="@layout/common_toolbar"/>
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/training_container"
@@ -21,42 +16,57 @@
         android:minHeight="?attr/actionBarSize"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
-        <RelativeLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="66dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginLeft="60dp"
-            android:layout_marginRight="10dp">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            <android.support.design.widget.TextInputLayout
-                android:id="@+id/training_layout"
+            <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_toLeftOf="@+id/training_date"
-                android:layout_toStartOf="@+id/training_date">
+                android:layout_height="66dp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginLeft="40dp"
+                android:layout_marginRight="10dp">
 
-                <EditText
-                    android:id="@+id/training"
+                <android.support.design.widget.TextInputLayout
+                    android:id="@+id/training_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/title"
-                    android:inputType="text"/>
+                    android:layout_toLeftOf="@+id/training_date"
+                    android:layout_toStartOf="@+id/training_date">
 
-            </android.support.design.widget.TextInputLayout>
+                    <EditText
+                        android:id="@+id/training"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/title"
+                        android:inputType="text"/>
 
-            <Button
-                android:id="@+id/training_date"
-                android:layout_width="wrap_content"
+                </android.support.design.widget.TextInputLayout>
+
+                <Button
+                    android:id="@+id/training_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignBottom="@+id/training_layout"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentRight="true"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingLeft="5dp"
+                    android:paddingRight="5dp"
+                    android:textSize="14sp"
+                    android:textStyle="normal"/>
+
+
+            </RelativeLayout>
+
+            <android.support.design.widget.TabLayout
+                android:id="@+id/tabs"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignBottom="@+id/training_layout"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentRight="true"
-                android:background="?android:attr/selectableItemBackground"
-                android:paddingLeft="5dp"
-                android:textSize="14sp"
-                android:textStyle="normal"/>
+                app:tabMode="fixed"/>
 
-        </RelativeLayout>
+        </LinearLayout>
 
     </android.support.v7.widget.Toolbar>
 
@@ -72,47 +82,176 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingBottom="@dimen/activity_vertical_margin"
-                android:paddingLeft="@dimen/activity_horizontal_margin"
-                android:paddingRight="@dimen/activity_horizontal_margin"
-                android:paddingTop="@dimen/activity_vertical_margin">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:id="@+id/not_editable"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:animateLayoutChanges="true"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/label_format"
-                        style="@style/Label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/format"/>
-
-                    <de.dreier.mytargets.views.DialogSpinner
-                        android:id="@+id/standard_round"
+                    <LinearLayout
+                        android:id="@+id/standard_round_layout"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/Label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/format"/>
+
+                        <de.dreier.mytargets.views.selector.StandardRoundSelector
+                            android:id="@+id/standard_round"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/practice_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <RadioGroup
+                            android:id="@+id/in_out_group"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="horizontal"
+                            android:padding="16dp"
+                            android:weightSum="1">
+
+                            <RadioButton
+                                android:id="@+id/outdoor"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_weight=".5"
+                                android:text="@string/outdoor"/>
+
+                            <RadioButton
+                                android:id="@+id/indoor"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_weight=".5"
+                                android:text="@string/indoor"/>
+
+                        </RadioGroup>
+
+                        <include layout="@layout/divider_full"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                style="@style/Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:padding="16dp"
+                                android:text="@string/distance"/>
+
+                            <de.dreier.mytargets.views.selector.DistanceSelector
+                                android:id="@+id/distance_spinner"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"/>
+
+                        </LinearLayout>
+
+                        <include layout="@layout/divider_full"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <TextView
+                                style="@style/Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/target_face"/>
+
+                            <de.dreier.mytargets.views.selector.TargetSelector
+                                android:id="@+id/target_spinner"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"/>
+
+                        </LinearLayout>
+
+                        <include layout="@layout/divider_full"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <TextView
+                                style="@style/Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/format"/>
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:orientation="horizontal">
+
+                                <de.dreier.mytargets.views.NumberPicker
+                                    android:id="@+id/passes"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"/>
+
+                                <TextView
+                                    android:id="@+id/label_with"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="top"
+                                    android:paddingLeft="4dp"
+                                    android:paddingRight="4dp"
+                                    android:text="@string/with"
+                                    android:textSize="16sp"/>
+
+                                <de.dreier.mytargets.views.NumberPicker
+                                    android:id="@+id/ppp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"/>
+
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <include layout="@layout/divider_full"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         style="@style/Label"
-                        android:layout_marginTop="16dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/bow"/>
 
-                    <de.dreier.mytargets.views.DialogSpinner
+                    <de.dreier.mytargets.views.selector.BowSelector
                         android:id="@+id/bow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
                         <Button
-                            android:id="@+id/add_bow"
+                            style="@style/primary_text"
                             android:layout_width="match_parent"
                             android:layout_height="35dp"
-                            android:layout_marginBottom="10dp"
                             android:background="?android:attr/selectableItemBackground"
                             android:gravity="start"
                             android:paddingBottom="5dp"
@@ -120,27 +259,34 @@
                             android:paddingRight="15dp"
                             android:paddingTop="5dp"
                             android:text="@string/add_bow"
-                            android:textColor="@android:color/secondary_text_light"/>
+                            android:textStyle="normal"/>
 
-                    </de.dreier.mytargets.views.DialogSpinner>
+                    </de.dreier.mytargets.views.selector.BowSelector>
+                </LinearLayout>
+
+                <include layout="@layout/divider_full"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         style="@style/Label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
                         android:text="@string/arrow"/>
 
-                    <de.dreier.mytargets.views.DialogSpinner
+                    <de.dreier.mytargets.views.selector.ArrowSelector
                         android:id="@+id/arrow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
                         <Button
-                            android:id="@+id/add_arrow"
+                            style="@style/primary_text"
                             android:layout_width="match_parent"
                             android:layout_height="35dp"
-                            android:layout_marginBottom="10dp"
                             android:background="?android:attr/selectableItemBackground"
                             android:gravity="start"
                             android:paddingBottom="5dp"
@@ -148,26 +294,35 @@
                             android:paddingRight="15dp"
                             android:paddingTop="5dp"
                             android:text="@string/add_arrow"
-                            android:textColor="@android:color/secondary_text_light"/>
+                            android:textStyle="normal"/>
 
-                    </de.dreier.mytargets.views.DialogSpinner>
-
+                    </de.dreier.mytargets.views.selector.ArrowSelector>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:id="@+id/environment_spinner_layout"
+                <CheckBox
+                    android:id="@+id/number_arrows"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_marginLeft="16dp"
+                    android:button="@drawable/arrow_numbers"
+                    android:padding="16dp"
+                    android:text="@string/arrow_numbers"/>
+
+                <include layout="@layout/divider_full"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         style="@style/Label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
                         android:text="@string/environment"/>
 
-                    <de.dreier.mytargets.views.DialogSpinner
+                    <de.dreier.mytargets.views.selector.EnvironmentSelector
                         android:id="@+id/environment_spinner"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -175,20 +330,16 @@
 
                 </LinearLayout>
 
-                <android.support.design.widget.TextInputLayout
+                <include layout="@layout/divider_full"/>
+
+                <CheckBox
+                    android:id="@+id/timer"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <EditText
-                        android:id="@+id/comment"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:hint="@string/comment"
-                        android:inputType="textMultiLine"/>
-
-                </android.support.design.widget.TextInputLayout>
-
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="16dp"
+                    android:button="@drawable/timer"
+                    android:padding="16dp"
+                    android:text="@string/timer"/>
 
             </LinearLayout>
 

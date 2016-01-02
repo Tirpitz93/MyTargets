@@ -189,7 +189,7 @@ public class IabHelper {
          *
          * @param result The result of the setup process.
          */
-        public void onIabSetupFinished(IabResult result);
+        void onIabSetupFinished(IabResult result);
     }
 
     /**
@@ -293,7 +293,11 @@ public class IabHelper {
         if (mServiceConn != null) {
             logDebug("Unbinding from service.");
             if (mContext != null) {
-                mContext.unbindService(mServiceConn);
+                try {
+                    mContext.unbindService(mServiceConn);
+                } catch(RuntimeException e) {
+                    e.printStackTrace();
+                }
             }
         }
         mDisposed = true;
@@ -331,7 +335,7 @@ public class IabHelper {
          * @param result The result of the purchase.
          * @param info   The purchase information (null if purchase failed)
          */
-        public void onIabPurchaseFinished(IabResult result, Purchase info);
+        void onIabPurchaseFinished(IabResult result, Purchase info);
     }
 
     // The listener registered on launchPurchaseFlow, which we have to call back when
@@ -623,7 +627,7 @@ public class IabHelper {
          * @param result The result of the operation.
          * @param inv    The inventory.
          */
-        public void onQueryInventoryFinished(IabResult result, Inventory inv);
+        void onQueryInventoryFinished(IabResult result, Inventory inv);
     }
 
 
@@ -644,28 +648,24 @@ public class IabHelper {
         checkNotDisposed();
         checkSetupDone("queryInventory");
         flagStartAsync("refresh inventory");
-        (new Thread(new Runnable() {
-            public void run() {
-                IabResult result = new IabResult(BILLING_RESPONSE_RESULT_OK,
-                        "Inventory refresh successful.");
-                Inventory inv = null;
-                try {
-                    inv = queryInventory(querySkuDetails, moreSkus);
-                } catch (IabException ex) {
-                    result = ex.getResult();
-                }
+        (new Thread(() -> {
+            IabResult result = new IabResult(BILLING_RESPONSE_RESULT_OK,
+                    "Inventory refresh successful.");
+            Inventory inv = null;
+            try {
+                inv = queryInventory(querySkuDetails, moreSkus);
+            } catch (IabException ex) {
+                result = ex.getResult();
+            } catch (NullPointerException ex) {
+                result = null;
+            }
 
-                flagEndAsync();
+            flagEndAsync();
 
-                final IabResult result_f = result;
-                final Inventory inv_f = inv;
-                if (!mDisposed && listener != null) {
-                    handler.post(new Runnable() {
-                        public void run() {
-                            listener.onQueryInventoryFinished(result_f, inv_f);
-                        }
-                    });
-                }
+            final IabResult result_f = result;
+            final Inventory inv_f = inv;
+            if (!mDisposed && listener != null) {
+                handler.post(() -> listener.onQueryInventoryFinished(result_f, inv_f));
             }
         })).start();
     }
@@ -732,7 +732,7 @@ public class IabHelper {
          * @param purchase The purchase that was (or was to be) consumed.
          * @param result   The result of the consumption operation.
          */
-        public void onConsumeFinished(Purchase purchase, IabResult result);
+        void onConsumeFinished(Purchase purchase, IabResult result);
     }
 
     /**
@@ -746,7 +746,7 @@ public class IabHelper {
          * @param results   The results of each consumption operation, corresponding to each
          *                  sku.
          */
-        public void onConsumeMultiFinished(List<Purchase> purchases, List<IabResult> results);
+        void onConsumeMultiFinished(List<Purchase> purchases, List<IabResult> results);
     }
 
     /**
@@ -831,7 +831,7 @@ public class IabHelper {
             logDebug("Bundle with null response code, assuming OK (known issue)");
             return BILLING_RESPONSE_RESULT_OK;
         } else if (o instanceof Integer) {
-            return ((Integer) o).intValue();
+            return (Integer) o;
         } else if (o instanceof Long) {
             return (int) ((Long) o).longValue();
         } else {
@@ -849,7 +849,7 @@ public class IabHelper {
             logError("Intent with no response code, assuming OK (known issue)");
             return BILLING_RESPONSE_RESULT_OK;
         } else if (o instanceof Integer) {
-            return ((Integer) o).intValue();
+            return (Integer) o;
         } else if (o instanceof Long) {
             return (int) ((Long) o).longValue();
         } else {
@@ -994,35 +994,26 @@ public class IabHelper {
             final OnConsumeMultiFinishedListener multiListener) {
         final Handler handler = new Handler();
         flagStartAsync("consume");
-        (new Thread(new Runnable() {
-            public void run() {
-                final List<IabResult> results = new ArrayList<>();
-                for (Purchase purchase : purchases) {
-                    try {
-                        consume(purchase);
-                        results.add(new IabResult(BILLING_RESPONSE_RESULT_OK,
-                                "Successful consume of sku " +
-                                        purchase.getSku()));
-                    } catch (IabException ex) {
-                        results.add(ex.getResult());
-                    }
+        (new Thread(() -> {
+            final List<IabResult> results = new ArrayList<>();
+            for (Purchase purchase : purchases) {
+                try {
+                    consume(purchase);
+                    results.add(new IabResult(BILLING_RESPONSE_RESULT_OK,
+                            "Successful consume of sku " +
+                                    purchase.getSku()));
+                } catch (IabException ex) {
+                    results.add(ex.getResult());
                 }
+            }
 
-                flagEndAsync();
-                if (!mDisposed && singleListener != null) {
-                    handler.post(new Runnable() {
-                        public void run() {
-                            singleListener.onConsumeFinished(purchases.get(0), results.get(0));
-                        }
-                    });
-                }
-                if (!mDisposed && multiListener != null) {
-                    handler.post(new Runnable() {
-                        public void run() {
-                            multiListener.onConsumeMultiFinished(purchases, results);
-                        }
-                    });
-                }
+            flagEndAsync();
+            if (!mDisposed && singleListener != null) {
+                handler.post(
+                        () -> singleListener.onConsumeFinished(purchases.get(0), results.get(0)));
+            }
+            if (!mDisposed && multiListener != null) {
+                handler.post(() -> multiListener.onConsumeMultiFinished(purchases, results));
             }
         })).start();
     }

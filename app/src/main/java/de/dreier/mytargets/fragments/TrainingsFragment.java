@@ -9,71 +9,48 @@ package de.dreier.mytargets.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.bignerdranch.android.recyclerviewchoicemode.SelectableViewHolder;
-
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import de.dreier.mytargets.R;
 import de.dreier.mytargets.activities.SimpleFragmentActivity;
 import de.dreier.mytargets.adapters.ExpandableNowListAdapter;
+import de.dreier.mytargets.managers.dao.RoundDataSource;
+import de.dreier.mytargets.managers.dao.TrainingDataSource;
 import de.dreier.mytargets.models.Month;
+import de.dreier.mytargets.shared.models.Round;
 import de.dreier.mytargets.shared.models.Training;
+import de.dreier.mytargets.utils.DataLoader;
+import de.dreier.mytargets.utils.HeaderBindingHolder;
+import de.dreier.mytargets.utils.SelectableViewHolder;
 
 /**
  * Shows an overview over all trying days
  */
-public class TrainingsFragment extends ExpandableNowListFragment<Month, Training> {
+public class TrainingsFragment extends ExpandableFragment<Month, Training> {
 
-    @Override
-    protected void init(Bundle intent, Bundle savedInstanceState) {
-        itemTypeRes = R.plurals.training_selected;
+    private TrainingDataSource trainingDataSource;
+
+    public TrainingsFragment() {
+        itemTypeSelRes = R.plurals.training_selected;
         itemTypeDelRes = R.plurals.training_deleted;
         newStringRes = R.string.new_training;
-        mEditable = true;
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        reloadData();
-        if (mAdapter.getItemCount() > 0) {
-            mAdapter.expandOrCollapse(0);
-        }
-    }
-
-    private void reloadData() {
-        ArrayList<Training> list = db.getTrainings();
-        HashMap<Long, Month> monthMap = new HashMap<>();
-        ArrayList<Month> months = new ArrayList<>();
-        for (Training t : list) {
-            Month month;
-            long parentId = t.getParentId();
-            if (!monthMap.containsKey(parentId)) {
-                month = new Month(parentId);
-                monthMap.put(parentId, month);
-                months.add(month);
-            } else {
-                month = monthMap.get(parentId);
-            }
-            month.reachedPoints += t.reachedPoints;
-            month.maxPoints += t.maxPoints;
-        }
-        Collections.sort(months);
-        setList(months, list, false, new TrainingAdapter());
     }
 
     @Override
     public void onSelected(Training item) {
         Intent i = new Intent(getActivity(), SimpleFragmentActivity.TrainingActivity.class);
-        i.putExtra(TRAINING_ID, item.getId());
+        i.putExtra(ITEM_ID, item.getId());
         startActivity(i);
         getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
     }
@@ -86,7 +63,28 @@ public class TrainingsFragment extends ExpandableNowListFragment<Month, Training
         getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
     }
 
-    protected class TrainingAdapter extends ExpandableNowListAdapter<Month, Training> {
+    @Override
+    public Loader<List<Training>> onCreateLoader(int id, Bundle args) {
+        trainingDataSource = new TrainingDataSource(getContext());
+        return new DataLoader<>(getContext(), trainingDataSource, trainingDataSource::getAll);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<List<Training>> loader, List<Training> data) {
+        Set<Long> monthMap = new HashSet<>();
+        List<Month> months = new ArrayList<>();
+        for (Training t : data) {
+            long parentId = t.getParentId();
+            if (!monthMap.contains(parentId)) {
+                monthMap.add(parentId);
+                months.add(new Month(parentId));
+            }
+        }
+        Collections.sort(months);
+        setList(trainingDataSource, months, data, false, new TrainingAdapter());
+    }
+
+    private class TrainingAdapter extends ExpandableNowListAdapter<Month, Training> {
 
         @Override
         protected HeaderViewHolder getTopLevelViewHolder(ViewGroup parent) {
@@ -98,18 +96,18 @@ public class TrainingsFragment extends ExpandableNowListFragment<Month, Training
         @Override
         protected ViewHolder getSecondLevelViewHolder(ViewGroup parent) {
             View itemView = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.training_card, parent, false);
+                    .inflate(R.layout.card_training, parent, false);
             return new ViewHolder(itemView);
         }
     }
 
-    public class ViewHolder extends SelectableViewHolder<Training> {
-        public final TextView mTitle;
-        public final TextView mSubtitle;
-        public final TextView mGes;
+    private class ViewHolder extends SelectableViewHolder<Training> {
+        private final TextView mTitle;
+        private final TextView mSubtitle;
+        private final TextView mGes;
 
         public ViewHolder(View itemView) {
-            super(itemView, mMultiSelector, TrainingsFragment.this);
+            super(itemView, mSelector, TrainingsFragment.this);
             mTitle = (TextView) itemView.findViewById(R.id.training);
             mSubtitle = (TextView) itemView.findViewById(R.id.training_date);
             mGes = (TextView) itemView.findViewById(R.id.gesTraining);
@@ -119,29 +117,29 @@ public class TrainingsFragment extends ExpandableNowListFragment<Month, Training
         public void bindCursor() {
             mTitle.setText(mItem.title);
             mSubtitle.setText(DateFormat.getDateInstance().format(mItem.date));
-            mGes.setText(mItem.reachedPoints + "/" + mItem.maxPoints);
+            int maxPoints = 0;
+            int reachedPoints = 0;
+            RoundDataSource roundDataSource = new RoundDataSource(getContext());
+            ArrayList<Round> rounds = roundDataSource.getAll(mItem.getId());
+            for(Round r:rounds) {
+                maxPoints += r.info.getMaxPoints();
+                reachedPoints += r.reachedPoints;
+            }
+            mGes.setText(reachedPoints + "/" + maxPoints);
         }
     }
 
-    public class HeaderViewHolder extends SelectableViewHolder<Month> {
-        public final TextView mTitle;
-      //  private final TextView mPoints;
-      //  private final TextView mPercentage;
+    private class HeaderViewHolder extends HeaderBindingHolder<Month> {
+        private final TextView mTitle;
 
         public HeaderViewHolder(View itemView) {
             super(itemView, R.id.expand_collapse);
             mTitle = (TextView) itemView.findViewById(android.R.id.text1);
-          //  mPoints = (TextView) itemView.findViewById(R.id.totalPoints);
-          //  mPercentage = (TextView) itemView.findViewById(R.id.totalPercentage);
         }
 
         @Override
         public void bindCursor() {
             mTitle.setText(mItem.toString());
-            /*mPoints.setText(mItem.reachedPoints + "/" + mItem.maxPoints);
-            String percent =
-                    mItem.maxPoints == 0 ? "" : (mItem.reachedPoints * 100 / mItem.maxPoints) + "%";
-            mPercentage.setText(percent);*/
         }
     }
 }

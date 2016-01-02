@@ -13,7 +13,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.support.annotation.StringRes;
-import de.dreier.mytargets.shared.R;
+
 import de.dreier.mytargets.shared.models.Diameter;
 
 public class Target3DBase extends Target {
@@ -73,10 +73,10 @@ public class Target3DBase extends Target {
     }
 
     @Override
-    protected boolean isInZone(float ax, float ay, int zone) {
+    protected boolean isInZone(float ax, float ay, int zone, boolean outsideIn) {
         if (zones - zone == 2) {
-            return region.contains((int)ax, (int)ay);
-        } else if(zones - zone == 3) {
+            return region.contains((int) ax, (int) ay);
+        } else if (zones - zone == 3) {
             return (ax - 564.375f) * (ax - 564.375f) + (ay - 577.813f) * (ay - 577.813f) <
                     43655.09f;
         }
@@ -84,11 +84,21 @@ public class Target3DBase extends Target {
     }
 
     @Override
-    public Diameter[] getDiameters(Context context) {
-        return new Diameter[] {new Diameter(context,R.string.mini),
-                new Diameter(context,R.string.small),
-                new Diameter(context,R.string.medium),
-                new Diameter(context,R.string.large),
-                new Diameter(context,R.string.xlarge)};
+    public Diameter[] getDiameters() {
+        return new Diameter[]{Diameter.MINI,
+                Diameter.SMALL,
+                Diameter.MEDIUM,
+                Diameter.LARGE,
+                Diameter.XLARGE};
+    }
+
+    @Override
+    public boolean is3DTarget() {
+        return true;
+    }
+
+    @Override
+    public int getMaxPoints() {
+        return Math.max(zonePoints[scoringStyle][0], zonePoints[scoringStyle][1]);
     }
 }

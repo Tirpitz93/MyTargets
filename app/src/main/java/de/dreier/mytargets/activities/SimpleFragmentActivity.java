@@ -15,11 +15,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 
 import de.dreier.mytargets.R;
+import de.dreier.mytargets.fragments.EditArrowFragment;
+import de.dreier.mytargets.fragments.EditBowFragment;
+import de.dreier.mytargets.fragments.EditRoundFragment;
 import de.dreier.mytargets.fragments.EditStandardRoundFragment;
 import de.dreier.mytargets.fragments.EditTrainingFragment;
-import de.dreier.mytargets.fragments.PasseFragment;
 import de.dreier.mytargets.fragments.SettingsFragment;
 import de.dreier.mytargets.fragments.TimerFragment;
+import de.dreier.mytargets.fragments.TrainingFragment;
 
 public abstract class SimpleFragmentActivity extends AppCompatActivity {
 
@@ -39,7 +42,7 @@ public abstract class SimpleFragmentActivity extends AppCompatActivity {
     }
 
     protected int getLayoutResource() {
-        return R.layout.frame_layout;
+        return R.layout.layout_frame;
     }
 
     @Override
@@ -78,7 +81,7 @@ public abstract class SimpleFragmentActivity extends AppCompatActivity {
 
         @Override
         public Fragment instantiateFragment() {
-            return new PasseFragment();
+            return new TrainingFragment();
         }
     }
 
@@ -89,12 +92,35 @@ public abstract class SimpleFragmentActivity extends AppCompatActivity {
             return new EditTrainingFragment();
         }
     }
+    public static class EditRoundActivity extends SimpleFragmentActivity {
+
+        @Override
+        protected Fragment instantiateFragment() {
+            return new EditRoundFragment();
+        }
+    }
 
     public static class EditStandardRoundActivity extends SimpleFragmentActivity {
 
         @Override
         protected Fragment instantiateFragment() {
             return new EditStandardRoundFragment();
+        }
+    }
+
+    public static class EditBowActivity extends SimpleFragmentActivity {
+
+        @Override
+        protected Fragment instantiateFragment() {
+            return new EditBowFragment();
+        }
+    }
+
+    public static class EditArrowActivity extends SimpleFragmentActivity {
+
+        @Override
+        protected Fragment instantiateFragment() {
+            return new EditArrowFragment();
         }
     }
 }

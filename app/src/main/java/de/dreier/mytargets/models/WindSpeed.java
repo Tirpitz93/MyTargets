@@ -17,9 +17,9 @@ import de.dreier.mytargets.shared.models.IdProvider;
 public class WindSpeed extends IdProvider {
     static final long serialVersionUID = 61L;
 
-    public String name;
+    public final String name;
 
-    public WindSpeed(long id, String name) {
+    private WindSpeed(long id, String name) {
         this.setId(id);
         this.name = name;
     }

@@ -5,7 +5,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.os.Bundle;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import com.google.android.gms.wearable.MessageEvent;
@@ -13,14 +13,12 @@ import com.google.android.gms.wearable.WearableListenerService;
 
 import java.io.IOException;
 
-import de.dreier.mytargets.shared.models.BitmapDataObject;
 import de.dreier.mytargets.shared.models.NotificationInfo;
 import de.dreier.mytargets.shared.utils.WearableUtils;
 
 public class WearableListener extends WearableListenerService {
 
     private static final int NOTIFICATION_ID = 1;
-    private static Bitmap image;
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
@@ -33,12 +31,7 @@ public class WearableListener extends WearableListenerService {
         if (messageEvent.getPath().equals(WearableUtils.STARTED_ROUND)) {
             if (data.length != 0) {
                 try {
-                    Bundle bundle = WearableUtils.deserializeToBundle(data);
-                    BitmapDataObject b = (BitmapDataObject) bundle
-                            .getSerializable(WearableUtils.BUNDLE_IMAGE);
-                    image = b.getBitmap();
-                    NotificationInfo info = (NotificationInfo) bundle
-                            .getSerializable(WearableUtils.BUNDLE_INFO);
+                    NotificationInfo info = WearableUtils.deserializeToInfo(data);
                     showNotification(info);
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
@@ -73,6 +66,7 @@ public class WearableListener extends WearableListenerService {
                 .build();
 
         // Create the ongoing notification
+        Bitmap image = BitmapFactory.decodeResource(getResources(), R.drawable.wear_bg);
         Notification.Builder notificationBuilder =
                 new Notification.Builder(this)
                         .setContentTitle(info.title)
@@ -80,7 +74,7 @@ public class WearableListener extends WearableListenerService {
                         .setSmallIcon(R.mipmap.ic_launcher)
                         .setOngoing(true)
                         .extend(new Notification.WearableExtender()
-                                        .addPage(page).setBackground(image));
+                                .addPage(page).setBackground(image));
 
         // Build the notification and show it
         NotificationManager notificationManager =

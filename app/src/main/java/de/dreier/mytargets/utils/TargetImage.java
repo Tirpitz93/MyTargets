@@ -11,9 +11,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.support.v7.app.AppCompatActivity;
+import android.graphics.Rect;
+import android.text.TextPaint;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -21,65 +21,47 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
+import de.dreier.mytargets.R;
+import de.dreier.mytargets.managers.dao.PasseDataSource;
+import de.dreier.mytargets.managers.dao.RoundDataSource;
 import de.dreier.mytargets.shared.models.Passe;
+import de.dreier.mytargets.shared.models.Round;
+import de.dreier.mytargets.shared.models.target.Target;
 
 public class TargetImage {
 
-    private Paint thinBlackBorder;
-    private Paint thinWhiteBorder;
-    private Paint drawColorP;
+    public void generateTrainingBitmap(Context context, int size, long trainingId, OutputStream fOut) {
+        List<Round> rounds = new RoundDataSource(context).getAll(trainingId);
+        if (rounds.size() == 0) {
+            return;
+        }
+        List<Rect> bounds = getBoundsForTargets(rounds, size);
 
-    private int mZoneCount;
-    private int[] target;
-    private static final int density = 1;
-
-    public void generateBitmap(Context context, int size, long round, OutputStream fOut) {
         // Create bitmap to draw on
-        Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        int height = bounds.get(bounds.size() - 1).bottom;
+        Bitmap b = Bitmap.createBitmap(size, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(b);
         canvas.drawColor(0, PorterDuff.Mode.CLEAR);
 
-        // Initialize variables
-//        int radius = size / 2;
-//        DatabaseManager db = DatabaseManager.getInstance(context);
-//        ArrayList<Passe> oldOnes = db.getPasses(round);
-//        mZoneCount = Target.target_rounds[round.target].length;
-//        init();
-//
-//        // Draw target
-//        target = Target.target_rounds[round.target];
-//        for (int i = mZoneCount; i > 0; i--) {
-//            // Select colors to draw with
-//            drawColorP.setColor(Target.highlightColor[target[i - 1]]);
-//
-//            // Draw a ring mit separator line
-//            if (i != 2 || round.target != 3 || !round.compound) {
-//                float rad = (radius * i) / (float) mZoneCount;
-//                canvas.drawCircle(radius, radius, rad, drawColorP);
-//                canvas.drawCircle(radius, radius, rad,
-//                        Target.target_rounds[round.target][i - 1] == 3 ?
-//                                thinWhiteBorder : thinBlackBorder);
-//            }
-//        }
-//
-//        // Draw cross in the middle
-//        Paint midColor =
-//                Target.target_rounds[round.target][0] == 3 ? thinWhiteBorder : thinBlackBorder;
-//        if (round.target < 5) {
-//            float lineLength = radius / (float) (mZoneCount * 6);
-//            canvas.drawLine(radius - lineLength, radius, radius + lineLength, radius, midColor);
-//            canvas.drawLine(radius, radius - lineLength, radius, radius + lineLength, midColor);
-//        } else {
-//            float lineLength = radius / (float) (mZoneCount * 4);
-//            canvas.drawLine(radius - lineLength, radius - lineLength, radius + lineLength,
-//                    radius + lineLength, midColor);
-//            canvas.drawLine(radius - lineLength, radius + lineLength, radius + lineLength,
-//                    radius - lineLength, midColor);
-//        }
-//
-//        // Draw exact arrow position
-//        drawArrows(canvas, radius, oldOnes);
+        TextPaint textPaint = new TextPaint();
+        textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(size / 20);
+
+        for (int i = 0; i < rounds.size(); i++) {
+            ArrayList<Passe> oldOnes = new PasseDataSource(context).getAllByRound(rounds.get(i).getId());
+            Target target = rounds.get(i).info.target;
+            target.setBounds(bounds.get(i));
+            target.draw(canvas);
+            target.drawArrows(canvas, oldOnes);
+            String roundTitle = context.getResources().getQuantityString(R.plurals.rounds, i + 1, i + 1);
+            Rect textBounds = new Rect();
+            textPaint.getTextBounds(roundTitle, 0, roundTitle.length(), textBounds);
+            int textX = bounds.get(i).centerX() - textBounds.width() / 2;
+            int textY = bounds.get(i).top - size / 30;
+            canvas.drawText(roundTitle, textX, textY, textPaint);
+        }
 
         try {
             b.compress(Bitmap.CompressFormat.PNG, 100, fOut);
@@ -90,54 +72,36 @@ public class TargetImage {
         }
     }
 
-    private void drawArrows(Canvas canvas, int radius, ArrayList<Passe> oldOnes) {
-        float count = 0;
-        float sumX = 0;
-        float sumY = 0;
-        for (Passe p : oldOnes) {
-            for (int i = 0; i < p.shot.length; i++) {
-                // For yellow and white background use black font color
-                int colorInd = i == mZoneCount || p.shot[i].zone < 0 ? 0 : target[p.shot[i].zone];
-                drawColorP.setColor(colorInd == 0 || colorInd == 4 ? Color.BLACK : Color.WHITE);
-                float selX = p.shot[i].x;
-                float selY = p.shot[i].y;
-                sumX += selX;
-                sumY += selY;
-                count++;
-
-                // Draw arrow position
-                float xp = radius + selX * radius;
-                float yp = radius + selY * radius;
-                canvas.drawCircle(xp, yp, 3 * density, drawColorP);
+    private List<Rect> getBoundsForTargets(List<Round> rounds, int size) {
+        int headerHeight = size / 10;
+        List<Rect> list = new ArrayList<>();
+        int j = 0;
+        boolean lastNarrow = false;
+        boolean narrow;
+        for (int i = 0; i < rounds.size(); i++) {
+            Target target = rounds.get(i).info.target;
+            int width = target.getWidth();
+            int height = target.getHeight();
+            narrow = width / height < 0.5;
+            if (lastNarrow && narrow) {
+                narrow = false;
+                j--;
+                int top = headerHeight + j * (size + headerHeight);
+                list.set(i - 1, new Rect(-size / 4, top, size * 3 / 4, top + size));
+                list.add(new Rect(size / 4, top, size * 5 / 4, top + size));
+            } else {
+                int top = headerHeight + j * (size + headerHeight);
+                list.add(new Rect(0, top, size, top + size));
             }
+            j++;
+            lastNarrow = narrow;
         }
-
-        if (count >= 2) {
-            drawColorP.setColor(Color.RED);
-            canvas.drawCircle(radius + (sumX / count) * radius, radius + (sumY / count) * radius,
-                    3 * density, drawColorP);
-        }
+        return list;
     }
 
-    private void init() {
-        // Set up a default Paint objects
-        thinBlackBorder = new Paint();
-        thinBlackBorder.setColor(0xFF1C1C1B);
-        thinBlackBorder.setAntiAlias(true);
-        thinBlackBorder.setStyle(Paint.Style.STROKE);
-
-        thinWhiteBorder = new Paint();
-        thinWhiteBorder.setColor(0xFFEEEEEE);
-        thinWhiteBorder.setAntiAlias(true);
-        thinWhiteBorder.setStyle(Paint.Style.STROKE);
-
-        drawColorP = new Paint();
-        drawColorP.setAntiAlias(true);
-    }
-
-    public void generateBitmap(AppCompatActivity context, int size, long mRound, File f)
+    public void generateTrainingBitmap(Context context, int size, long trainingId, File f)
             throws FileNotFoundException {
         final FileOutputStream fOut = new FileOutputStream(f);
-        generateBitmap(context, size, mRound, fOut);
+        generateTrainingBitmap(context, size, trainingId, fOut);
     }
 }

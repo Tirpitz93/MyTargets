@@ -8,40 +8,35 @@
 package de.dreier.mytargets.adapters;
 
 import android.support.v7.widget.RecyclerView;
-import android.view.View;
 import android.view.ViewGroup;
-
-import com.bignerdranch.android.recyclerviewchoicemode.SelectableViewHolder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import de.dreier.mytargets.shared.models.IdProvider;
+import de.dreier.mytargets.utils.HeaderBindingHolder;
+import de.dreier.mytargets.utils.ItemBindingHolder;
+import de.dreier.mytargets.utils.SelectableViewHolder;
 
 public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD extends IdProvider>
-        extends RecyclerView.Adapter<SelectableViewHolder<IdProvider>> {
+        extends RecyclerView.Adapter<ItemBindingHolder<IdProvider>> {
 
-    public static final int HEADER_TYPE = 1;
     public static final int ITEM_TYPE = 2;
     public static final int ITEM_TYPE_2 = 3;
-
-    private ArrayList<HEADER> mListHeaders = new ArrayList<>();
-    private HashMap<Long, List<CHILD>> childMap = new HashMap<>();
-    private ArrayList<Boolean> isOpen = new ArrayList<>();
-    private List<DataHolder> dataList = new ArrayList<>();
+    private static final int HEADER_TYPE = 1;
+    private final HashMap<Long, List<CHILD>> childMap = new HashMap<>();
+    private final ArrayList<Boolean> isOpen = new ArrayList<>();
+    private final List<DataHolder> dataList = new ArrayList<>();
+    private List<HEADER> mListHeaders = new ArrayList<>();
 
     @Override
     public long getItemId(int position) {
-        position = getDataListPosition(position);
         if (position == -1) {
             return 0;
         }
         return dataList.get(position).getId();
-    }
-
-    private int getDataListPosition(int position) {
-        return position;
     }
 
     @Override
@@ -51,7 +46,6 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
 
     @Override
     public int getItemViewType(int position) {
-        position = getDataListPosition(position);
         if (dataList.get(position).getType() == ItemType.ITEM) {
             return ITEM_TYPE;
         }
@@ -59,33 +53,29 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
     }
 
     @Override
-    public SelectableViewHolder<IdProvider> onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ItemBindingHolder<IdProvider> onCreateViewHolder(ViewGroup parent, int viewType) {
         if (viewType == HEADER_TYPE) {
-            return (SelectableViewHolder<IdProvider>) getTopLevelViewHolder(parent);
+            return (ItemBindingHolder<IdProvider>) getTopLevelViewHolder(parent);
         } else {
-            return (SelectableViewHolder<IdProvider>) getSecondLevelViewHolder(parent);
+            return (ItemBindingHolder<IdProvider>) getSecondLevelViewHolder(parent);
         }
     }
 
-    protected abstract SelectableViewHolder<HEADER> getTopLevelViewHolder(ViewGroup parent);
+    protected abstract HeaderBindingHolder<HEADER> getTopLevelViewHolder(ViewGroup parent);
 
     protected abstract SelectableViewHolder<CHILD> getSecondLevelViewHolder(ViewGroup parent);
 
     @Override
-    public final void onBindViewHolder(SelectableViewHolder<IdProvider> viewHolder, int position) {
-        int index = getDataListPosition(position);
-        if (index == -1) {
+    public final void onBindViewHolder(ItemBindingHolder<IdProvider> viewHolder, int position) {
+        if (position == -1) {
             return;
         }
-        final DataHolder dh = dataList.get(index);
-        if (getItemViewType(position) == HEADER_TYPE) {
+        final DataHolder dh = dataList.get(position);
+        if (viewHolder instanceof HeaderBindingHolder) {
+            HeaderBindingHolder header = (HeaderBindingHolder) viewHolder;
             int headerPosition = getHeaderCountUpToPosition(position);
-            viewHolder.setExpandOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    expandOrCollapse(dataList.indexOf(dh));
-                }
-            }, isOpen.get(headerPosition));
+            header.setExpandOnClickListener(v -> expandOrCollapse(dataList.indexOf(dh)),
+                    isOpen.get(headerPosition));
         }
         viewHolder.bindCursor(dh.getData());
     }
@@ -93,14 +83,26 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
     private int getHeaderCountUpToPosition(int position) {
         int counter = 0;
         for (int i = 0; i < position; i++) {
-            counter += dataList.get(i).getType() == ItemType.HEADER ? 1 : 0;
+            if (isHeader(i)) {
+                counter++;
+            }
         }
         return counter;
     }
 
+    private int getItemCountUpToHeader(long header) {
+        int items = 0;
+        for (int i = 0; i < dataList.size(); i++) {
+            if (dataList.get(i).getType() == ItemType.HEADER && dataList.get(i).getId() == header) {
+                items++;
+                break;
+            }
+            items++;
+        }
+        return items;
+    }
 
     public boolean isHeader(int position) {
-        position = getDataListPosition(position);
         return position == -1 || dataList.get(position).getType() == ItemType.HEADER;
     }
 
@@ -124,28 +126,54 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
     }
 
     public IdProvider getItem(int position) {
-        position = getDataListPosition(position);
         if (position == -1) {
             return null;
         }
         return dataList.get(position).getData();
     }
 
+    public void add(int pos, CHILD item) {
+        dataList.add(pos, new DataHolder(item, ItemType.ITEM));
+        long parent = item.getParentId();
+        childMap.get(parent).add(pos - getItemCountUpToHeader(parent), item);
+        notifyItemInserted(pos);
+    }
 
     public void remove(int pos) {
         DataHolder removed = dataList.remove(pos);
-        long parent = removed.getData().getParentId();
-        childMap.get(parent).remove(removed.getData());
+        IdProvider data = removed.getData();
+        long parent = data.getParentId();
+        childMap.get(parent).remove(data);
         notifyItemRemoved(pos);
     }
 
-    public void setList(ArrayList<HEADER> headers, ArrayList<CHILD> children, boolean opened) {
+    public void setList(List<HEADER> headers, List<CHILD> children) {
+        HashSet<Long> oldExpanded = getExpandedIds();
         mListHeaders = headers;
         dataList.clear();
         childMap.clear();
         isOpen.clear();
         for (HEADER header : mListHeaders) {
-            childMap.put(header.getId(), new ArrayList<CHILD>());
+            childMap.put(header.getId(), new ArrayList<>());
+        }
+        for (CHILD child : children) {
+            long parent = child.getParentId();
+            childMap.get(parent).add(child);
+        }
+        for (HEADER header : mListHeaders) {
+            isOpen.add(false);
+            dataList.add(new DataHolder(header, ItemType.HEADER));
+        }
+        setExpandedIds(oldExpanded);
+    }
+
+    public void setList(List<HEADER> headers, List<CHILD> children, boolean opened) {
+        mListHeaders = headers;
+        dataList.clear();
+        childMap.clear();
+        isOpen.clear();
+        for (HEADER header : mListHeaders) {
+            childMap.put(header.getId(), new ArrayList<>());
         }
         for (CHILD child : children) {
             long parent = child.getParentId();
@@ -160,11 +188,30 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
                 }
             }
         }
-
     }
 
     public int getMaxSpan() {
         return 1;
+    }
+
+    public HashSet<Long> getExpandedIds() {
+        HashSet<Long> ids = new HashSet<>();
+        for (int i = 0; i < isOpen.size(); i++) {
+            if (isOpen.get(i)) {
+                ids.add(mListHeaders.get(i).getId());
+            }
+        }
+        return ids;
+    }
+
+    public void setExpandedIds(HashSet<Long> expanded) {
+        for (int i = 0; i < mListHeaders.size(); i++) {
+            long headerId = mListHeaders.get(i).getId();
+            boolean expand = expanded.contains(headerId);
+            if (isOpen.get(i) != expand) {
+                expandOrCollapse(getItemCountUpToHeader(headerId) - 1);
+            }
+        }
     }
 
     protected enum ItemType {
@@ -172,8 +219,8 @@ public abstract class ExpandableNowListAdapter<HEADER extends IdProvider, CHILD 
     }
 
     private class DataHolder {
-        private IdProvider data;
-        private ItemType type;
+        private final IdProvider data;
+        private final ItemType type;
 
         public DataHolder(IdProvider item, ItemType type) {
             this.data = item;

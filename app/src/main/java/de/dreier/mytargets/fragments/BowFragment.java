@@ -9,6 +9,7 @@ package de.dreier.mytargets.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.content.Loader;
 import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,62 +17,68 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bignerdranch.android.recyclerviewchoicemode.SelectableViewHolder;
-
-import java.util.ArrayList;
+import java.util.List;
 
 import de.dreier.mytargets.R;
-import de.dreier.mytargets.activities.EditBowActivity;
 import de.dreier.mytargets.activities.SimpleFragmentActivity;
 import de.dreier.mytargets.adapters.NowListAdapter;
+import de.dreier.mytargets.managers.dao.BowDataSource;
 import de.dreier.mytargets.shared.models.Bow;
+import de.dreier.mytargets.shared.models.SightSetting;
+import de.dreier.mytargets.utils.DataLoader;
 import de.dreier.mytargets.utils.RoundedAvatarDrawable;
+import de.dreier.mytargets.utils.SelectableViewHolder;
 
-public class BowFragment extends NowListFragment<Bow> implements View.OnClickListener {
+public class BowFragment extends EditableFragment<Bow> implements View.OnClickListener {
 
-    @Override
-    protected void init(Bundle intent, Bundle savedInstanceState) {
-        itemTypeRes = R.plurals.bow_selected;
+    private BowDataSource bowDataSource;
+
+    public BowFragment() {
+        itemTypeSelRes = R.plurals.bow_selected;
         itemTypeDelRes = R.plurals.bow_deleted;
         newStringRes = R.string.new_bow;
-        mEditable = true;
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        setList(db.getBows(), new BowAdapter());
+    public Loader<List<Bow>> onCreateLoader(int id, Bundle args) {
+        bowDataSource = new BowDataSource(getContext());
+        return new DataLoader<>(getContext(), bowDataSource, bowDataSource::getAll);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<List<Bow>> loader, List<Bow> data) {
+        setList(bowDataSource, data, new BowAdapter());
     }
 
     @Override
     protected void onEdit(Bow item) {
-        Intent i = new Intent(getActivity(), EditBowActivity.class);
-        i.putExtra(EditBowActivity.BOW_ID, item.getId());
+        Intent i = new Intent(getActivity(), SimpleFragmentActivity.EditBowActivity.class);
+        i.putExtra(EditBowFragment.BOW_ID, item.getId());
         startActivity(i);
         getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
     }
 
     @Override
     public void onClick(View v) {
-        startActivity(SimpleFragmentActivity.EditStandardRoundActivity.class);
+        startActivity(SimpleFragmentActivity.EditBowActivity.class);
     }
 
-    protected class BowAdapter extends NowListAdapter<Bow> {
+    private class BowAdapter extends NowListAdapter<Bow> {
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent) {
             View itemView = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.image_card_details, parent, false);
+                    .inflate(R.layout.card_image_details, parent, false);
             return new ViewHolder(itemView);
         }
     }
 
-    public class ViewHolder extends SelectableViewHolder<Bow> {
+    private class ViewHolder extends SelectableViewHolder<Bow> {
         private final TextView mName;
         private final TextView mDetails;
         private final ImageView mImg;
 
         public ViewHolder(View itemView) {
-            super(itemView, mMultiSelector, BowFragment.this);
+            super(itemView, mSelector, BowFragment.this);
             mName = (TextView) itemView.findViewById(R.id.name);
             mDetails = (TextView) itemView.findViewById(R.id.details);
             mImg = (ImageView) itemView.findViewById(R.id.image);
@@ -80,7 +87,7 @@ public class BowFragment extends NowListFragment<Bow> implements View.OnClickLis
         @Override
         public void bindCursor() {
             mName.setText(mItem.name);
-            mImg.setImageDrawable(new RoundedAvatarDrawable(mItem.image));
+            mImg.setImageDrawable(new RoundedAvatarDrawable(mItem.getThumbnail()));
 
             String html = getString(R.string.bow_type) + ": <b>" +
                     getResources().getStringArray(R.array.bow_types)[mItem.type] + "</b>";
@@ -90,9 +97,8 @@ public class BowFragment extends NowListFragment<Bow> implements View.OnClickLis
             if (!mItem.size.trim().isEmpty()) {
                 html += "<br>" + getString(R.string.size) + ": <b>" + mItem.size + "</b>";
             }
-            ArrayList<EditBowActivity.SightSetting> sight = db.getSettings(mItem.getId());
-            for (EditBowActivity.SightSetting s : sight) {
-                html += "<br>" + s.distance + ": <b>" + s.value + "</b>";
+            for (SightSetting s : mItem.sightSettings) {
+                html += "<br>" + s.distance.toString(getActivity()) + ": <b>" + s.value + "</b>";
             }
             mDetails.setText(Html.fromHtml(html));
         }

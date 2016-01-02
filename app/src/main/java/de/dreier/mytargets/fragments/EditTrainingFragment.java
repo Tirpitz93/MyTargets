@@ -6,210 +6,193 @@
  */
 package de.dreier.mytargets.fragments;
 
-import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.design.widget.TabLayout;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.RadioButton;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
 import de.dreier.mytargets.R;
-import de.dreier.mytargets.activities.EditArrowActivity;
-import de.dreier.mytargets.activities.EditBowActivity;
 import de.dreier.mytargets.activities.InputActivity;
-import de.dreier.mytargets.activities.ItemSelectActivity;
 import de.dreier.mytargets.activities.SimpleFragmentActivity;
-import de.dreier.mytargets.adapters.ArrowItemAdapter;
-import de.dreier.mytargets.adapters.BowItemAdapter;
-import de.dreier.mytargets.adapters.EnvironmentItemAdapter;
-import de.dreier.mytargets.adapters.StandardRoundsItemAdapter;
-import de.dreier.mytargets.managers.DatabaseManager;
-import de.dreier.mytargets.shared.models.EWeather;
-import de.dreier.mytargets.shared.models.Environment;
+import de.dreier.mytargets.managers.dao.RoundDataSource;
+import de.dreier.mytargets.managers.dao.StandardRoundDataSource;
+import de.dreier.mytargets.managers.dao.TrainingDataSource;
+import de.dreier.mytargets.shared.models.Arrow;
+import de.dreier.mytargets.shared.models.Diameter;
+import de.dreier.mytargets.shared.models.Distance;
 import de.dreier.mytargets.shared.models.Round;
 import de.dreier.mytargets.shared.models.RoundTemplate;
 import de.dreier.mytargets.shared.models.StandardRound;
 import de.dreier.mytargets.shared.models.Training;
-import de.dreier.mytargets.utils.MyBackupAgent;
-import de.dreier.mytargets.views.DialogSpinner;
-import zh.wang.android.apis.yweathergetter4a.WeatherInfo;
-import zh.wang.android.apis.yweathergetter4a.YahooWeather;
-import zh.wang.android.apis.yweathergetter4a.YahooWeatherInfoListener;
+import de.dreier.mytargets.shared.models.target.Target;
+import de.dreier.mytargets.shared.models.target.TargetFactory;
+import de.dreier.mytargets.views.NumberPicker;
+import de.dreier.mytargets.views.selector.ArrowSelector;
+import de.dreier.mytargets.views.selector.BowSelector;
+import de.dreier.mytargets.views.selector.DistanceSelector;
+import de.dreier.mytargets.views.selector.EnvironmentSelector;
+import de.dreier.mytargets.views.selector.StandardRoundSelector;
+import de.dreier.mytargets.views.selector.TargetSelector;
 
-public class EditTrainingFragment extends Fragment implements DatePickerDialog.OnDateSetListener,
-        YahooWeatherInfoListener {
+
+public class EditTrainingFragment extends EditFragmentBase implements DatePickerDialog.OnDateSetListener,
+        TabLayout.OnTabSelectedListener {
     public static final String TRAINING_ID = "training_id";
-    private static final int REQ_SELECTED_ARROW = 1;
-    private static final int REQ_SELECTED_BOW = 2;
-    private static final int REQ_SELECTED_ENVIRONMENT = 3;
-    private static final int REQ_SELECTED_DATE = 4;
-    private static final int REQ_SELECTED_STANDARD_ROUND = 5;
+
+    private static final int REQUEST_LOCATION_PERMISSION = 1;
+    private static final int REQ_SELECTED_DATE = 2;
 
     private long mTraining = -1;
 
-    private DialogSpinner bow;
-    private DialogSpinner arrow;
-    private int mBowId = 0;
+    private BowSelector bow;
+    private ArrowSelector arrow;
     private EditText training;
-    private EditText comment;
     private Button training_date;
     private Date date = new Date();
-    private DialogSpinner environment;
-    private DialogSpinner standardRoundSpinner;
+    private EnvironmentSelector environment;
+    private StandardRoundSelector standardRoundSpinner;
+    private CheckBox number_arrows;
+    private CheckBox timer;
+    private View practice, roundLayout;
+    private RadioButton indoor;
+    private TabLayout tabLayout;
+    private TargetSelector targetSpinner;
+    private DistanceSelector distanceSpinner;
+    private NumberPicker passes, arrows;
 
-    @SuppressWarnings("ConstantConditions")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         View rootView = inflater.inflate(R.layout.fragment_edit_training, container, false);
 
-        try {
-            new YahooWeather().queryYahooWeatherByGPS(getActivity(), this);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        setUpToolbar(rootView);
 
-        Toolbar toolbar = (Toolbar) rootView.findViewById(R.id.toolbar);
-        final AppCompatActivity activity = (AppCompatActivity) getActivity();
-        activity.setSupportActionBar(toolbar);
-        activity.getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        activity.getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_close_white_24dp);
-        setHasOptionsMenu(true);
-
-        Bundle i = getArguments();
-        if (i != null) {
-            mTraining = i.getLong(TRAINING_ID, -1);
+        Bundle arguments = getArguments();
+        if (arguments != null) {
+            mTraining = arguments.getLong(TRAINING_ID, -1);
         }
-        SharedPreferences prefs = activity.getSharedPreferences(MyBackupAgent.PREFS, 0);
 
         training = (EditText) rootView.findViewById(R.id.training);
         training_date = (Button) rootView.findViewById(R.id.training_date);
-        training_date.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Package bundle with fragment arguments
-                Bundle bundle = new Bundle();
-                bundle.putSerializable(DatePickerFragment.ARG_CURRENT_DATE, date);
+        training_date.setOnClickListener(v -> {
+            // Package bundle with fragment arguments
+            Bundle bundle = new Bundle();
+            bundle.putSerializable(DatePickerFragment.ARG_CURRENT_DATE, date);
 
-                // Create and show date picker
-                DatePickerFragment datePickerDialog = new DatePickerFragment();
-                datePickerDialog.setTargetFragment(EditTrainingFragment.this, REQ_SELECTED_DATE);
-                datePickerDialog.setArguments(bundle);
-                datePickerDialog.show(activity.getSupportFragmentManager(), "date_picker");
-            }
+            // Create and show date picker
+            DatePickerFragment datePickerDialog = new DatePickerFragment();
+            datePickerDialog.setTargetFragment(EditTrainingFragment.this, REQ_SELECTED_DATE);
+            datePickerDialog.setArguments(bundle);
+            datePickerDialog.show(activity.getSupportFragmentManager(), "date_picker");
         });
 
-        View scrollView = rootView.findViewById(R.id.scrollView);
+        tabLayout = (TabLayout) rootView.findViewById(R.id.tabs);
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.practice));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.standard_round));
+        tabLayout.setOnTabSelectedListener(this);
 
-        // Format / Standard round
-        standardRoundSpinner = (DialogSpinner) rootView.findViewById(R.id.standard_round);
-        final StandardRoundsItemAdapter standardRoundsItemAdapter = new StandardRoundsItemAdapter(activity);
-        standardRoundSpinner.setAdapter(standardRoundsItemAdapter);
-        standardRoundSpinner.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(activity,
-                        ItemSelectActivity.StandardRound.class);
-                StandardRound standardRound = (StandardRound) standardRoundSpinner.getSelectedItem();
-                i.putExtra("item", standardRound);
-                startActivityForResult(i, REQ_SELECTED_STANDARD_ROUND);
-            }
-        });
+        practice = rootView.findViewById(R.id.practice_layout);
+        roundLayout = rootView.findViewById(R.id.standard_round_layout);
 
-        // Bow
-        bow = (DialogSpinner) rootView.findViewById(R.id.bow);
-        bow.setAdapter(new BowItemAdapter(activity));
-        Button addBow = (Button) rootView.findViewById(R.id.add_bow);
-        bow.setAddButton(addBow, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(activity, EditBowActivity.class));
-            }
-        });
-        bow.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(activity,
-                        ItemSelectActivity.Bow.class);
-                startActivityForResult(i, REQ_SELECTED_BOW);
+        View not_editable = rootView.findViewById(R.id.not_editable);
 
-            }
-        });
+        standardRoundSpinner = (StandardRoundSelector) rootView
+                .findViewById(R.id.standard_round);
+        distanceSpinner = (DistanceSelector) rootView.findViewById(R.id.distance_spinner);
+        targetSpinner = (TargetSelector) rootView.findViewById(R.id.target_spinner);
+        bow = (BowSelector) rootView.findViewById(R.id.bow);
+        arrow = (ArrowSelector) rootView.findViewById(R.id.arrow);
+        environment = (EnvironmentSelector) rootView.findViewById(R.id.environment_spinner);
 
-        // Arrow
-        arrow = (DialogSpinner) rootView.findViewById(R.id.arrow);
-        arrow.setAdapter(new ArrowItemAdapter(activity));
-        Button addArrow = (Button) rootView.findViewById(R.id.add_arrow);
-        arrow.setAddButton(addArrow, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(activity, EditArrowActivity.class));
-            }
-        });
-        arrow.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(activity,
-                        ItemSelectActivity.Arrow.class);
-                startActivityForResult(i, REQ_SELECTED_ARROW);
-            }
-        });
+        arrow.setOnUpdateListener(this::updateArrowNumbers);
+        number_arrows = (CheckBox) rootView.findViewById(R.id.number_arrows);
 
-        // Environment
-        environment = (DialogSpinner) rootView.findViewById(R.id.environment_spinner);
-        environment.setItemId(0);
-        environment.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(activity,
-                        ItemSelectActivity.Environment.class);
-                i.putExtra(EnvironmentFragment.ENVIRONMENT,
-                        ((EnvironmentItemAdapter) environment.getAdapter()).getEnvironment());
-                startActivityForResult(i, REQ_SELECTED_ENVIRONMENT);
-            }
-        });
-        environment.setAdapter(new EnvironmentItemAdapter(activity));
+        // Indoor / outdoor
+        RadioButton outdoor = (RadioButton) rootView.findViewById(R.id.outdoor);
+        indoor = (RadioButton) rootView.findViewById(R.id.indoor);
 
-        // Comment
-        comment = (EditText) rootView.findViewById(R.id.comment);
+        // Passes
+        timer = (CheckBox) rootView.findViewById(R.id.timer);
+        passes = (NumberPicker) rootView.findViewById(R.id.passes);
+        passes.setTextPattern(R.plurals.passe);
+
+        // Arrows per passe
+        arrows = (NumberPicker) rootView.findViewById(R.id.ppp);
+        arrows.setTextPattern(R.plurals.arrow);
+        arrows.setMinimum(1);
+        arrows.setMaximum(10);
 
         if (mTraining == -1) {
+            setTitle(R.string.new_training);
             training.setText(getString(R.string.training));
             setTrainingDate();
-            activity.getSupportActionBar().setTitle(R.string.new_training);
+            tabLayout.getTabAt(prefs.getInt("tab", 0)).select();
             bow.setItemId(prefs.getInt("bow", -1));
             arrow.setItemId(prefs.getInt("arrow", -1));
-            standardRoundSpinner.setItemId(prefs.getInt("standard_round", 0));
+            standardRoundSpinner.setItemId(prefs.getInt("standard_round", 32));
+            number_arrows.setChecked(prefs.getBoolean("numbering", number_arrows.isChecked()));
+            timer.setChecked(prefs.getBoolean("timer", false));
+            int distance = prefs.getInt("distance", 10);
+            String unit = prefs.getString("unit", "m");
+            distanceSpinner.setItem(new Distance(distance, unit));
+            indoor.setChecked(prefs.getBoolean("indoor", false));
+            outdoor.setChecked(!prefs.getBoolean("indoor", false));
+            arrows.setValue(prefs.getInt("ppp", 3));
+            passes.setValue(prefs.getInt("rounds", 10));
+            Target target = TargetFactory.createTarget(activity, prefs.getInt("target", 0),
+                    prefs.getInt("scoring_style", 0));
+            target.size = new Diameter(prefs.getInt("size_target", 60),
+                    prefs.getString("unit_target", Diameter.CENTIMETER));
+            targetSpinner.setItem(target);
+            environment.queryWeather(this, REQUEST_LOCATION_PERMISSION);
         } else {
-            DatabaseManager db = DatabaseManager.getInstance(activity);
-            Training train = db.getTraining(mTraining);
+            setTitle(R.string.edit_training);
+            Training train = new TrainingDataSource(getContext()).get(mTraining);
             training.setText(train.title);
             date = train.date;
             bow.setItemId(train.bow);
             arrow.setItemId(train.arrow);
-           // comment.setText(train.co); TODO
             standardRoundSpinner.setItemId(train.standardRoundId);
-            ((EnvironmentItemAdapter) environment.getAdapter()).setEnvironment(train.environment);
+            environment.setItem(train.environment);
             setTrainingDate();
-            activity.getSupportActionBar().setTitle(R.string.new_training);
-            scrollView.setVisibility(View.GONE);
+            not_editable.setVisibility(View.GONE);
+            tabLayout.setVisibility(View.GONE);
         }
+        updateMode(tabLayout.getTabAt(0));
+        updateArrowNumbers(arrow.getSelectedItem());
         return rootView;
+    }
+
+    private void updateArrowNumbers(Arrow item) {
+        if (item == null || item.numbers.isEmpty()) {
+            number_arrows.setVisibility(View.GONE);
+        } else {
+            number_arrows.setVisibility(View.VISIBLE);
+            number_arrows.setChecked(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_LOCATION_PERMISSION:
+                environment.onPermissionResult(activity, grantResults);
+        }
     }
 
     @Override
@@ -223,180 +206,131 @@ public class EditTrainingFragment extends Fragment implements DatePickerDialog.O
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == Activity.RESULT_OK) {
-            long id = data.getLongExtra("id", 0);
-            if (requestCode == REQ_SELECTED_ARROW) {
-                arrow.setItemId(id);
-                return;
-            } else if (requestCode == REQ_SELECTED_BOW) {
-                bow.setItemId(id);
-                return;
-            } else if (requestCode == REQ_SELECTED_ENVIRONMENT) {
-                Environment env = (Environment) data.getSerializableExtra("item");
-                ((EnvironmentItemAdapter) environment.getAdapter()).setEnvironment(env);
-                return;
-            } else if (requestCode == REQ_SELECTED_STANDARD_ROUND) {
-                StandardRound sr = (StandardRound) data.getSerializableExtra("item");
-                if (sr != null) {
-                    ((StandardRoundsItemAdapter) standardRoundSpinner.getAdapter())
-                            .setStandardRound(sr);
-                    standardRoundSpinner.setItemId(0);
-                } else {
-                    ((StandardRoundsItemAdapter) standardRoundSpinner.getAdapter())
-                            .setStandardRound(null);
-                    standardRoundSpinner.setItemId(id);
-                }
-                return;
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        bow.setAdapter(new BowItemAdapter(getActivity()));
-        arrow.setAdapter(new ArrowItemAdapter(getActivity()));
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.save, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_save) {
-            getActivity().finish();
-            if (mTraining == -1) {
-                onSaveTraining();
-                Intent i = new Intent(getActivity(), SimpleFragmentActivity.TrainingActivity.class);
-                i.putExtra(PasseFragment.TRAINING_ID, mTraining);
-                i.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                startActivity(i);
-
-                i = new Intent(getActivity(), InputActivity.class);
-                i.putExtra(InputActivity.TRAINING_ID, mTraining);
-                startActivity(i);
-                getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
-            } else {
-                onSaveTraining();
-                getActivity().overridePendingTransition(R.anim.left_in, R.anim.right_out);
-            }
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    void onSaveTraining() {
-        DatabaseManager db = DatabaseManager.getInstance(getActivity());
+    protected void onSave() {
+        boolean newTraining = mTraining == -1;
         String title = training.getText().toString();
-        Training training = new Training();
-        training.setId(mTraining);
-        training.title = title;
-        training.date = date;
-        training.environment = ((EnvironmentItemAdapter) environment.getAdapter()).getEnvironment();
-        training.bow = bow.getSelectedItemId();
-        training.arrow = arrow.getSelectedItemId();
-        if (training.bow == 0) {
-            training.bow = mBowId;
+        Training training1 = new Training();
+        training1.setId(mTraining);
+        training1.title = title;
+        training1.date = date;
+        training1.environment = environment.getSelectedItem();
+        training1.bow = bow.getSelectedItem() == null ? 0 : bow.getSelectedItem().getId();
+        training1.arrow = arrow.getSelectedItem() == null ? 0 : arrow.getSelectedItem().getId();
+        int time = 120;
+        try {
+            SharedPreferences prefs = PreferenceManager
+                    .getDefaultSharedPreferences(getActivity());
+            time = Integer.parseInt(prefs.getString("timer_shoot_time", "120"));
+        } catch (NumberFormatException ignored) {
         }
+        training1.timePerPasse = timer.isChecked() ? time : -1;
+        Arrow selectedItem = arrow.getSelectedItem();
+        training1.arrowNumbering = !(selectedItem == null || selectedItem.numbers.isEmpty()) &&
+                number_arrows.isChecked();
 
-        StandardRound standardRound = (StandardRound) standardRoundSpinner.getSelectedItem();
-        db.update(standardRound);
-        training.standardRoundId = standardRound.getId();
-
-        db.update(training);
-        mTraining = training.getId();
-
-        for (RoundTemplate template : standardRound.getRounds()) {
-            Round round = new Round();
-            round.training = mTraining;
-            round.info = template;
-            round.comment = "";
-            db.update(round);
-        }
-
-        SharedPreferences prefs = getActivity().getSharedPreferences(MyBackupAgent.PREFS, 0);
+        getActivity().finish();
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("standard_round", (int) standardRound.getId());
-        editor.putInt("bow", (int) bow.getSelectedItemId());
-        editor.putInt("arrow", (int) arrow.getSelectedItemId());
+        StandardRound standardRound;
+        TrainingDataSource trainingDataSource = new TrainingDataSource(getContext());
+        StandardRoundDataSource standardRoundDataSource = new StandardRoundDataSource(getContext());
+        if (newTraining) {
+            getActivity().setTitle(R.string.edit_training);
+            if (tabLayout.getSelectedTabPosition() == 0) {
+                // Generate and save standard round template for practice
+                standardRound = new StandardRound();
+                standardRound.club = StandardRound.CUSTOM_PRACTICE;
+                standardRound.name = getString(R.string.practice);
+                standardRound.indoor = indoor.isChecked();
+                ArrayList<RoundTemplate> rounds = new ArrayList<>();
+                RoundTemplate round = new RoundTemplate();
+                round.target = targetSpinner.getSelectedItem();
+                round.targetTemplate = round.target;
+                round.arrowsPerPasse = arrows.getValue();
+                round.passes = passes.getValue();
+                round.distance = distanceSpinner.getSelectedItem();
+                rounds.add(round);
+                standardRound.setRounds(rounds);
+                standardRoundDataSource.update(standardRound);
+
+                editor.putInt("tab", tabLayout.getSelectedTabPosition());
+                editor.putBoolean("indoor", standardRound.indoor);
+                editor.putInt("ppp", round.arrowsPerPasse);
+                editor.putInt("rounds", round.passes);
+                editor.putInt("distance", round.distance.value);
+                editor.putString("unit", round.distance.unit);
+                editor.putInt("target", (int) round.target.getId());
+                editor.putInt("scoring_style", round.target.scoringStyle);
+                editor.putInt("size_target", round.target.size.value);
+                editor.putString("unit_target", round.target.size.unit);
+            } else {
+                standardRound = standardRoundSpinner.getSelectedItem();
+                standardRoundDataSource.update(standardRound);
+                editor.putInt("standard_round", (int) standardRound.getId());
+            }
+            training1.standardRoundId = standardRound.getId();
+
+            trainingDataSource.update(training1);
+            mTraining = training1.getId();
+            ArrayList<Round> rounds = new ArrayList<>();
+            RoundDataSource roundDataSource = new RoundDataSource(getContext());
+            for (RoundTemplate template : standardRound.getRounds()) {
+                Round round = new Round();
+                round.training = mTraining;
+                round.info = template;
+                round.comment = "";
+                roundDataSource.update(round);
+                rounds.add(round);
+            }
+            Intent i = new Intent(getActivity(), SimpleFragmentActivity.TrainingActivity.class);
+            i.putExtra(TrainingFragment.ITEM_ID, mTraining);
+            i.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            startActivity(i);
+
+            i = new Intent(getActivity(), InputActivity.class);
+            i.putExtra(InputActivity.ROUND_ID, rounds.get(0).getId());
+            i.putExtra(InputActivity.PASSE_IND, 0);
+            startActivity(i);
+            getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
+        } else {
+            // Edit training
+            Training train = trainingDataSource.get(mTraining);
+            training1.standardRoundId = train.standardRoundId;
+            trainingDataSource.update(training1);
+            getActivity().overridePendingTransition(R.anim.left_in, R.anim.right_out);
+        }
+
+        editor.putInt("bow", (int) training1.bow);
+        editor.putInt("arrow", (int) training1.arrow);
+        editor.putBoolean("timer", timer.isChecked());
+        editor.putBoolean("numbering", training1.arrowNumbering);
         editor.apply();
     }
 
-        /*if (bow.getAdapter().getCount() == 0 && mBowId == 0 && round.info.target == 3) { TODO
-            new AlertDialog.Builder(getActivity()).setTitle(R.string.title_compound)
-                    .setMessage(R.string.msg_compound_type)
-                    .setPositiveButton(R.string.compound_bow,
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    mBowId = -2;
-                                    onSaveRound();
-                                }
-                            })
-                    .setNegativeButton(R.string.other_bow,
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    mBowId = -1;
-                                    onSaveRound();
-                                }
-                            }).setCancelable(false)
-                    .show();*/
+    @Override
+    public void onTabSelected(TabLayout.Tab tab) {
+        updateMode(tab);
+    }
 
+    private void updateMode(TabLayout.Tab tab) {
+        View in, out;
+        if (tab.getPosition() == 0) {
+            in = practice;
+            out = roundLayout;
+        } else {
+            out = practice;
+            in = roundLayout;
+        }
+        in.setVisibility(View.VISIBLE);
+        out.setVisibility(View.GONE);
+    }
 
     @Override
-    public void gotWeatherInfo(WeatherInfo weatherInfo) {
-        Environment e = new Environment();
-        int code = weatherInfo.getCurrentCode();
-        if (code == 8 || code == 9) {
-            e.weather = EWeather.LIGHT_RAIN;
-        } else if (code < 19) {
-            e.weather = EWeather.RAIN;
-        } else if (code < 27) {
-            e.weather = EWeather.CLOUDY;
-        } else if (code < 31) {
-            e.weather = EWeather.PARTLY_CLOUDY;
-        } else {
-            e.weather = EWeather.SUNNY;
-        }
-        e.windDirection = 0;
-        e.location = weatherInfo.getWOEIDneighborhood();
-        String speed = weatherInfo.getWindSpeed();
-        String unit = weatherInfo.getSpeedUnit();
-        try {
-            float sp = Float.parseFloat(speed);
-            if (unit.equals("km/h") || unit.equals("kph")) {
-                sp *= 0.621371192f;
-            }
-            if (sp < 1.2f) {
-                e.windSpeed = 0;
-            } else if (sp < 4.6) {
-                e.windSpeed = 1;
-            } else if (sp < 8.1) {
-                e.windSpeed = 2;
-            } else if (sp < 12.7) {
-                e.windSpeed = 3;
-            } else if (sp < 18.4) {
-                e.windSpeed = 4;
-            } else if (sp < 25.3) {
-                e.windSpeed = 5;
-            } else if (sp < 32.2) {
-                e.windSpeed = 6;
-            } else if (sp < 39.1) {
-                e.windSpeed = 7;
-            } else if (sp < 47.2) {
-                e.windSpeed = 8;
-            } else if (sp < 55.2) {
-                e.windSpeed = 9;
-            }
-        } catch (NumberFormatException nfe) {
-            e.windSpeed = 0;
-        }
-        ((EnvironmentItemAdapter) environment.getAdapter()).setEnvironment(e);
-        environment.setItemId(0);
+    public void onTabUnselected(TabLayout.Tab tab) {
+
+    }
+
+    @Override
+    public void onTabReselected(TabLayout.Tab tab) {
+
     }
 }

@@ -16,10 +16,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 
 import de.dreier.mytargets.R;
+import de.dreier.mytargets.fragments.ArrowRankingFragment;
 import de.dreier.mytargets.fragments.StatisticsFragment;
 
 public class StatisticsActivity extends AppCompatActivity {
-    public static final String ROUND_ID = "round_id";
+    private static final String ROUND_ID = "round_id";
     public static final String TRAINING_ID = "training_id";
     private long mTraining;
     private long mRound;
@@ -32,6 +33,7 @@ public class StatisticsActivity extends AppCompatActivity {
         mTraining = getIntent().getLongExtra(TRAINING_ID, -1);
         mRound = getIntent().getLongExtra(ROUND_ID, -1);
 
+        //noinspection ConstantConditions
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         ViewPager pager = (ViewPager) findViewById(R.id.pager);
@@ -56,18 +58,22 @@ public class StatisticsActivity extends AppCompatActivity {
 
         @Override
         public Fragment getItem(int position) {
-            StatisticsFragment fragment = new StatisticsFragment();
-            Bundle bundle = new Bundle();
-            bundle.putInt(StatisticsFragment.ARG_POSITION, position);
-            bundle.putLong(StatisticsFragment.ARG_TRAINING_ID, mTraining);
-            bundle.putLong(StatisticsFragment.ARG_ROUND_ID, mRound);
-            fragment.setArguments(bundle);
-            return fragment;
+            if(position==2) {
+                return new ArrowRankingFragment();
+            } else {
+                StatisticsFragment fragment = new StatisticsFragment();
+                Bundle bundle = new Bundle();
+                bundle.putInt(StatisticsFragment.ARG_POSITION, position);
+                bundle.putLong(StatisticsFragment.ARG_TRAINING_ID, mTraining);
+                bundle.putLong(StatisticsFragment.ARG_ROUND_ID, mRound);
+                fragment.setArguments(bundle);
+                return fragment;
+            }
         }
 
         @Override
         public int getCount() {
-            return mRound == -1 ? (mTraining == -1 ? 1 : 2) : 3;
+            return 3;
         }
 
         @Override
@@ -78,7 +84,7 @@ public class StatisticsActivity extends AppCompatActivity {
                 case 1:
                     return getString(R.string.entire_training);
                 default:
-                    return getString(R.string.current_round);
+                    return getString(R.string.arrow_ranking);
             }
         }
     }

@@ -16,8 +16,11 @@ import de.dreier.mytargets.shared.models.Dimension;
 
 public class WA5RingTarget extends CircularTargetBase {
 
+    public static final int ID = 2;
+    private boolean usedAsSpot = false;
+
     public WA5RingTarget(Context context) {
-        super(context, 2, R.string.wa_5_ring);
+        super(context, ID, R.string.wa_5_ring);
         zones = 6;
         radius = new float[]{50, 100, 200, 300, 400, 500};
         colorFill = new int[]{LEMON_YELLOW, LEMON_YELLOW, LEMON_YELLOW, FLAMINGO_RED, FLAMINGO_RED,
@@ -36,6 +39,19 @@ public class WA5RingTarget extends CircularTargetBase {
                 new Diameter(80, Dimension.CENTIMETER),
                 new Diameter(92, Dimension.CENTIMETER),
                 new Diameter(122, Dimension.CENTIMETER)};
+    }
+
+    public WA5RingTarget(Context context, boolean usedAsSpot) {
+        this(context);
+        this.usedAsSpot = usedAsSpot;
+    }
+
+    @Override
+    protected void drawZone(Canvas canvas, Rect rect, int zone) {
+        // Do not draw second ring if we have a 3 Spot for compound
+        if (!usedAsSpot || scoringStyle != 1 || zone != 1) {
+            super.drawZone(canvas, rect, zone);
+        }
     }
 
     @Override

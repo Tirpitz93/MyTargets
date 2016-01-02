@@ -13,44 +13,40 @@ import android.support.v4.app.Fragment;
 import android.view.View;
 import android.widget.TextView;
 
+import java.io.Serializable;
+
 import de.dreier.mytargets.R;
 import de.dreier.mytargets.fragments.ArrowFragment;
 import de.dreier.mytargets.fragments.BowFragment;
 import de.dreier.mytargets.fragments.DistanceFragment;
 import de.dreier.mytargets.fragments.EnvironmentFragment;
-import de.dreier.mytargets.fragments.NowListFragment;
-import de.dreier.mytargets.fragments.NowListFragmentBase;
-import de.dreier.mytargets.fragments.StandardRoundFragment;
+import de.dreier.mytargets.fragments.FragmentBase;
+import de.dreier.mytargets.fragments.SelectItemFragment;
 import de.dreier.mytargets.fragments.TargetFragment;
 import de.dreier.mytargets.fragments.WindDirectionFragment;
 import de.dreier.mytargets.fragments.WindSpeedFragment;
 import de.dreier.mytargets.shared.models.IIdProvider;
-import de.dreier.mytargets.shared.models.IdProvider;
 
 public abstract class ItemSelectActivity extends SimpleFragmentActivity
-        implements NowListFragment.OnItemSelectedListener,
-        NowListFragmentBase.ContentListener {
+        implements FragmentBase.OnItemSelectedListener,
+        FragmentBase.ContentListener {
+    public static final String ITEM = "item";
 
-    protected FloatingActionButton mFab;
-    protected View mNewLayout;
-    protected TextView mNewText;
+    private FloatingActionButton mFab;
+    private View mNewLayout;
+    private TextView mNewText;
 
     @Override
     protected int getLayoutResource() {
-        return R.layout.frame_layout_fab;
+        return R.layout.layout_frame_fab;
     }
 
-    @SuppressWarnings("ConstantConditions")
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_close_white_24dp);
-        }
         mFab = (FloatingActionButton) findViewById(R.id.fab);
-        if (this instanceof View.OnClickListener) {
-            mFab.setOnClickListener((View.OnClickListener) this);
+        if (childFragment instanceof View.OnClickListener) {
+            mFab.setOnClickListener(((View.OnClickListener) childFragment)::onClick);
             mNewLayout = findViewById(R.id.new_layout);
             mNewText = (TextView) findViewById(R.id.new_text);
         }
@@ -71,97 +67,61 @@ public abstract class ItemSelectActivity extends SimpleFragmentActivity
     }
 
     @Override
-    public void onItemSelected(long itemId, Class<? extends IIdProvider> aClass) {
+    public void onItemSelected(IIdProvider item) {
         Intent data = new Intent();
-        data.putExtra("id", itemId);
-        data.putExtra("call", getIntent());
+        data.putExtra(ITEM, (Serializable) item);
         setResult(RESULT_OK, data);
         onBackPressed();
     }
 
-    @Override
-    public void onItemSelected(IdProvider e) {
-        Intent data = new Intent();
-        data.putExtra("item", e);
-        setResult(RESULT_OK, data);
-        onBackPressed();
-    }
-
-    public static class Bow extends ItemSelectActivity implements View.OnClickListener {
-
-        @Override
-        public Fragment instantiateFragment() {
-            return new BowFragment();
-        }
-
-        @Override
-        public void onClick(View v) {
-            ((BowFragment) childFragment).onClick(v);
-        }
-    }
-
-    public static class Arrow extends ItemSelectActivity implements View.OnClickListener {
+    public static class ArrowActivity extends ItemSelectActivity {
 
         @Override
         public Fragment instantiateFragment() {
             return new ArrowFragment();
         }
+    }
+
+    public static class BowActivity extends ItemSelectActivity {
 
         @Override
-        public void onClick(View v) {
-            ((ArrowFragment) childFragment).onClick(v);
+        public Fragment instantiateFragment() {
+            return new BowFragment();
         }
     }
 
-    public static class Target extends ItemSelectActivity {
-        @Override
-        protected Fragment instantiateFragment() {
-            return new TargetFragment();
-        }
-    }
-
-    public static class Distance extends ItemSelectActivity implements View.OnClickListener {
+    public static class DistanceActivity extends ItemSelectActivity {
         @Override
         protected Fragment instantiateFragment() {
             return new DistanceFragment();
         }
-
-        @Override
-        public void onClick(View v) {
-            ((DistanceFragment) childFragment).onClick(v);
-        }
     }
 
-    public static class StandardRound extends ItemSelectActivity implements View.OnClickListener {
-        @Override
-        protected Fragment instantiateFragment() {
-            return new StandardRoundFragment();
-        }
-
-        @Override
-        public void onClick(View v) {
-            ((StandardRoundFragment) childFragment).onClick(v);
-        }
-    }
-
-    public static class Environment extends ItemSelectActivity {
+    public static class EnvironmentActivity extends ItemSelectActivity {
         @Override
         protected Fragment instantiateFragment() {
             return new EnvironmentFragment();
         }
     }
 
-    public static class WindSpeed extends ItemSelectActivity {
+    public static class TargetActivity extends ItemSelectActivity {
         @Override
         protected Fragment instantiateFragment() {
-            return new WindSpeedFragment();
+            return new TargetFragment();
         }
     }
 
-    public static class WindDirection extends ItemSelectActivity {
+    public static class WindDirectionActivity extends ItemSelectActivity {
         @Override
         protected Fragment instantiateFragment() {
             return new WindDirectionFragment();
+        }
+    }
+
+    public static class WindSpeedActivity extends ItemSelectActivity {
+        @Override
+        protected Fragment instantiateFragment() {
+            return new WindSpeedFragment();
         }
     }
 }

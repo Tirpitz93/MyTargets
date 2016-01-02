@@ -1,34 +1,38 @@
 package de.dreier.mytargets.fragments;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.Preference;
-import android.preference.PreferenceScreen;
+import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.preference.Preference;
+import android.support.v7.preference.PreferenceFragmentCompat;
+import android.util.Log;
 import android.widget.Toast;
 
-import com.github.machinarius.preferencefragment.PreferenceFragment;
 import com.ipaulpro.afilechooser.utils.FileUtils;
-import com.michaelflisar.licenses.dialog.LicensesDialog;
-import com.michaelflisar.licenses.licenses.LicenseEntry;
-import com.michaelflisar.licenses.licenses.Licenses;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import de.dreier.mytargets.R;
+import de.dreier.mytargets.activities.MainActivity;
 import de.dreier.mytargets.utils.BackupUtils;
 import de.dreier.mytargets.utils.IABHelperWrapper;
 import de.dreier.mytargets.utils.Utils;
+import de.psdev.licensesdialog.LicensesDialog;
 
-public class SettingsFragment extends PreferenceFragment
+public class SettingsFragment extends PreferenceFragmentCompat
         implements SharedPreferences.OnSharedPreferenceChangeListener,
         DonateDialogFragment.DonationListener {
+    private static final int REQUEST_READ_STORAGE = 1;
+    private static final int REQUEST_WRITE_STORAGE_EXPORT = 2;
+    private static final int REQUEST_WRITE_STORAGE_BACKUP = 3;
     private IABHelperWrapper mIABWrapper;
 
 
@@ -36,22 +40,16 @@ public class SettingsFragment extends PreferenceFragment
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
+    public void onCreatePreferences(Bundle bundle, String s) {
         addPreferencesFromResource(R.xml.preferences);
-        LicensesDialog licences = (LicensesDialog) getPreferenceScreen()
-                .findPreference("pref_licence");
-        licence(licences);
 
         Preference version = getPreferenceScreen().findPreference("pref_version");
-        String versionName = Utils.getAppVersionInfo(getActivity()).versionName;
+        String versionName = Utils.getAppVersionInfo(getContext()).versionName;
         version.setSummary(getString(R.string.version, versionName));
 
         setSecondsSummary("timer_wait_time", "10");
         setSecondsSummary("timer_shoot_time", "120");
         setSecondsSummary("timer_warn_time", "30");
-        setUnitSummary();
     }
 
     @Override
@@ -59,6 +57,7 @@ public class SettingsFragment extends PreferenceFragment
         super.onActivityCreated(savedInstanceState);
         mIABWrapper = new IABHelperWrapper((AppCompatActivity) getActivity());
         ActionBar ab = ((AppCompatActivity) getActivity()).getSupportActionBar();
+        assert ab != null;
         ab.setHomeButtonEnabled(true);
         ab.setDisplayHomeAsUpEnabled(true);
     }
@@ -70,16 +69,15 @@ public class SettingsFragment extends PreferenceFragment
         mIABWrapper.onDestroy();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
-        boolean ret = super.onPreferenceTreeClick(preferenceScreen, preference);
+    public boolean onPreferenceTreeClick(@NonNull Preference preference) {
+        boolean ret = super.onPreferenceTreeClick(preference);
         if (preference.getKey().equals("pref_import")) {
-            showFilePicker();
+            doImport();
         } else if (preference.getKey().equals("pref_backup")) {
-            save(false);
+            doBackup();
         } else if (preference.getKey().equals("pref_export")) {
-            save(true);
+            doExport();
         } else if (preference.getKey().equals("pref_rate")) {
             rate();
         } else if (preference.getKey().equals("pref_share")) {
@@ -88,31 +86,14 @@ public class SettingsFragment extends PreferenceFragment
             contact();
         } else if (preference.getKey().equals("pref_donate")) {
             mIABWrapper.showDialog(this);
+        } else if (preference.getKey().equals("pref_licence")) {
+            new LicensesDialog.Builder(getActivity())
+                    .setTitle(R.string.licences)
+                    .setNotices(R.raw.licences)
+                    .setIncludeOwnLicense(false).build().show();
         }
 
         return ret;
-    }
-
-    private void licence(LicensesDialog licences) {
-        Licenses.init(getActivity());
-        final List<LicenseEntry> list = new ArrayList<>();
-        list.add(Licenses.createLicense("ksoichiro", "1.5.0", "Android-ObservableScrollView",
-                "Copyright 2014 Soichiro Kashima"));
-        list.add(Licenses.createLicense("Machinarius", "0.1.1", "PreferenceFragment-Compat",
-                "Copyright Machinarius"));
-        list.add(Licenses.createLicense("iPaulPro", "", "aFileChooser",
-                "Copyright 2011 - 2013 Paul Burke"));
-        list.add(Licenses.createLicense("MichaelFlisar", "1.0", "LicensesDialog",
-                "Copyright 2013 Michael Flisar"));
-        list.add(Licenses.createLicense("futuresimple", "1.9.0", "FloatingActionButton",
-                "Copyright 2014 Jerzy Chalupski"));
-        list.add(Licenses.createLicense("IanGClifton", "1.0.2", "FloatLabel",
-                "Copyright IanGClifton"));
-        list.add(Licenses.createLicense("soarcn", "1.1", "UndoBar",
-                "Copyright 2011, 2014 Liao Kai"));
-        list.add(Licenses.createLicenseIcon8());
-
-        licences.setLicences(list);
     }
 
     private void contact() {
@@ -182,7 +163,65 @@ public class SettingsFragment extends PreferenceFragment
         }
     }
 
-    void showFilePicker() {
+    private void doImport() {
+        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            showFilePicker();
+            return;
+        }
+
+        requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                REQUEST_READ_STORAGE);
+    }
+
+    private void doBackup() {
+        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            save(false);
+            return;
+        }
+
+        requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_WRITE_STORAGE_BACKUP);
+    }
+
+    private void doExport() {
+        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            save(true);
+            return;
+        }
+
+        requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_WRITE_STORAGE_EXPORT);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_READ_STORAGE:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    showFilePicker();
+                } else {
+                    Log.e("Permission", "Denied");
+                }
+                break;
+            case REQUEST_WRITE_STORAGE_BACKUP:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    save(false);
+                } else {
+                    Log.e("Permission", "Denied");
+                }
+                break;
+            case REQUEST_WRITE_STORAGE_EXPORT:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    save(true);
+                } else {
+                    Log.e("Permission", "Denied");
+                }
+                break;
+
+        }
+    }
+
+    private void showFilePicker() {
         Intent getContentIntent = FileUtils.createGetContentIntent();
         Intent intent = Intent.createChooser(getContentIntent, getString(R.string.select_a_file));
         startActivityForResult(intent, 1);
@@ -194,7 +233,9 @@ public class SettingsFragment extends PreferenceFragment
             if (requestCode == 1 && resultCode == AppCompatActivity.RESULT_OK) {
                 final Uri uri = data.getData();
                 if (BackupUtils.Import(getActivity(), uri)) {
-                    getActivity().finish();
+                    Intent intent = new Intent(getContext(), MainActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
                 }
             }
             super.onActivityResult(requestCode, resultCode, data);
@@ -222,10 +263,9 @@ public class SettingsFragment extends PreferenceFragment
         setSecondsSummary("timer_wait_time", "10");
         setSecondsSummary("timer_shoot_time", "120");
         setSecondsSummary("timer_warn_time", "30");
-        setUnitSummary();
     }
 
-    void setSecondsSummary(String key, String def) {
+    private void setSecondsSummary(String key, String def) {
         Preference pref = findPreference(key);
         int sec;
         try {
@@ -236,14 +276,6 @@ public class SettingsFragment extends PreferenceFragment
             getPreferenceManager().getSharedPreferences().edit().putString(key, def).apply();
         }
         pref.setSummary(getResources().getQuantityString(R.plurals.second, sec, sec));
-    }
-
-    private void setUnitSummary() {
-        Preference pref = findPreference("pref_unit");
-        Boolean defValue = Boolean.valueOf(getString(R.string.default_unit));
-        boolean val = getPreferenceManager().getSharedPreferences().getBoolean("pref_unit",
-                defValue);
-        pref.setSummary(val ? R.string.metric : R.string.imperial);
     }
 
     @Override

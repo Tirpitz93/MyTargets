@@ -7,26 +7,17 @@
 
 package de.dreier.mytargets.fragments;
 
-import android.content.Intent;
-import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.bignerdranch.android.recyclerviewchoicemode.SelectableViewHolder;
-
 import de.dreier.mytargets.R;
-import de.dreier.mytargets.activities.EditBowActivity;
 import de.dreier.mytargets.adapters.NowListAdapter;
 import de.dreier.mytargets.models.WindSpeed;
+import de.dreier.mytargets.utils.SelectableViewHolder;
 
-public class WindSpeedFragment extends NowListFragment<WindSpeed> {
-
-    @Override
-    protected void init(Bundle intent, Bundle savedInstanceState) {
-        mEditable = false;
-    }
+public class WindSpeedFragment extends SelectItemFragment<WindSpeed> {
 
     @Override
     public void onResume() {
@@ -39,28 +30,20 @@ public class WindSpeedFragment extends NowListFragment<WindSpeed> {
         onClick(holder, (WindSpeed) holder.getItem());
     }
 
-    @Override
-    protected void onEdit(WindSpeed item) {
-        Intent i = new Intent(getActivity(), EditBowActivity.class);
-        i.putExtra(EditBowActivity.BOW_ID, item.getId());
-        startActivity(i);
-        getActivity().overridePendingTransition(R.anim.right_in, R.anim.left_out);
-    }
-
-    protected class WindSpeedAdapter extends NowListAdapter<WindSpeed> {
+    private class WindSpeedAdapter extends NowListAdapter<WindSpeed> {
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent) {
             View itemView = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.text_card, parent, false);
+                    .inflate(R.layout.card_text, parent, false);
             return new ViewHolder(itemView);
         }
     }
 
-    public class ViewHolder extends SelectableViewHolder<WindSpeed> {
+    private class ViewHolder extends SelectableViewHolder<WindSpeed> {
         private final TextView mName;
 
         public ViewHolder(View itemView) {
-            super(itemView, mMultiSelector, WindSpeedFragment.this);
+            super(itemView, mSelector, WindSpeedFragment.this);
             mName = (TextView) itemView.findViewById(R.id.name);
         }
 

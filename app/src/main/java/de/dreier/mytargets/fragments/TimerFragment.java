@@ -168,48 +168,50 @@ public class TimerFragment extends Fragment {
                 try {
                     Cast.CastApi.launchApplication(mApiClient, CAST_ID, false)
                             .setResultCallback(
-                                    new ResultCallback<Cast.ApplicationConnectionResult>() {
-                                        @Override
-                                        public void onResult(Cast.ApplicationConnectionResult result) {
-                                            Status status = result.getStatus();
-                                            if (status.isSuccess()) {
-                                                ApplicationMetadata applicationMetadata =
-                                                        result.getApplicationMetadata();
-                                                String sessionId = result.getSessionId();
-                                                String applicationStatus = result
-                                                        .getApplicationStatus();
-                                                boolean wasLaunched = result.getWasLaunched();
+                                    result -> {
+                                        Status status = result.getStatus();
+                                        if (status.isSuccess()) {
+                                            ApplicationMetadata applicationMetadata =
+                                                    result.getApplicationMetadata();
+                                            String sessionId = result.getSessionId();
+                                            String applicationStatus = result
+                                                    .getApplicationStatus();
+                                            boolean wasLaunched = result.getWasLaunched();
 
-                                                Intent intent = new Intent(getActivity(),
-                                                        SimpleFragmentActivity.TimerActivity.class);
-                                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                                                PendingIntent notificationPendingIntent = PendingIntent
-                                                        .getActivity(getActivity(), 0, intent, 0);
+                                            Intent intent = new Intent(getActivity(),
+                                                    SimpleFragmentActivity.TimerActivity.class);
+                                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                                            PendingIntent notificationPendingIntent = PendingIntent
+                                                    .getActivity(getActivity(), 0, intent, 0);
 
-                                                CastRemoteDisplayLocalService.NotificationSettings settings =
-                                                        new CastRemoteDisplayLocalService.NotificationSettings.Builder()
-                                                                .setNotificationPendingIntent(notificationPendingIntent).build();
+                                            CastRemoteDisplayLocalService.NotificationSettings settings =
+                                                    new CastRemoteDisplayLocalService.NotificationSettings.Builder()
+                                                            .setNotificationPendingIntent(notificationPendingIntent).build();
 
-                                                CastRemoteDisplayLocalService.startService(
-                                                        getActivity().getApplicationContext(),
-                                                        PresentationService.class, CAST_ID,
-                                                        mSelectedDevice, settings,
-                                                        new CastRemoteDisplayLocalService.Callbacks() {
-                                                            @Override
-                                                            public void onRemoteDisplaySessionStarted(
-                                                                    CastRemoteDisplayLocalService service) {
-                                                                // initialize sender UI
-                                                            }
+                                            CastRemoteDisplayLocalService.startService(
+                                                    getActivity().getApplicationContext(),
+                                                    PresentationService.class, CAST_ID,
+                                                    mSelectedDevice, settings,
+                                                    new CastRemoteDisplayLocalService.Callbacks() {
+                                                        @Override
+                                                        public void onServiceCreated(CastRemoteDisplayLocalService castRemoteDisplayLocalService) {
 
-                                                            @Override
-                                                            public void onRemoteDisplaySessionError(
-                                                                    Status errorReason){
-                                                                //initError();
-                                                            }
-                                                        });
-                                            } else {
-                                                //teardown();
-                                            }
+                                                        }
+
+                                                        @Override
+                                                        public void onRemoteDisplaySessionStarted(
+                                                                CastRemoteDisplayLocalService service) {
+                                                            // initialize sender UI
+                                                        }
+
+                                                        @Override
+                                                        public void onRemoteDisplaySessionError(
+                                                                Status errorReason){
+                                                            //initError();
+                                                        }
+                                                    });
+                                        } else {
+                                            //teardown();
                                         }
                                     });
 

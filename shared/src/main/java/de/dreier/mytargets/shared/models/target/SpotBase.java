@@ -29,53 +29,71 @@ public class SpotBase extends Target {
     @Override
     protected void draw(Canvas canvas, Rect rect) {
         for (int i = 0; i < facePositions.length; i++) {
-            face.draw(canvas, getBounds(i,rect));
+            face.draw(canvas, getTargetBounds(rect, i));
         }
         onPostDraw(canvas, rect);
     }
 
     @Override
-    public String zoneToString(int zone) {
-        face.scoringStyle = scoringStyle;
-        return face.zoneToString(zone);
+    protected float getArrowSize(Rect rect, int arrow) {
+        return recalc(getTargetBounds(rect, arrow), ARROW_RADIUS);
     }
 
-    public int getPointsByZone(int zone) {
+    @Override
+    public String zoneToString(int zone, int arrow) {
         face.scoringStyle = scoringStyle;
-        return face.getPointsByZone(zone);
+        return face.zoneToString(zone, arrow);
     }
 
+    @Override
+    protected int getPointsByZone(int zone, int scoringStyle, int arrow) {
+        face.scoringStyle = scoringStyle;
+        return face.getPointsByZone(zone, scoringStyle, arrow);
+    }
+
+    @Override
     public int getMaxPoints() {
         face.scoringStyle = scoringStyle;
         return face.getMaxPoints();
     }
 
-    public float zoneToX(int zone) {
+    @Override
+    public float getXFromZone(int zone) {
         face.scoringStyle = scoringStyle;
-        return face.zoneToX(zone);
+        return face.getXFromZone(zone);
     }
 
-    public int getZoneColor(int zone) {
+    @Override
+    public int getFillColor(int zone) {
         face.scoringStyle = scoringStyle;
-        return face.getZoneColor(zone);
+        return face.getFillColor(zone);
     }
 
+    @Override
     public int getStrokeColor(int zone) {
         face.scoringStyle = scoringStyle;
         return face.getStrokeColor(zone);
     }
 
+    @Override
+    public int getContrastColor(int zone) {
+        face.scoringStyle = scoringStyle;
+        return face.getContrastColor(zone);
+    }
+
+    @Override
     public int getTextColor(int zone) {
         face.scoringStyle = scoringStyle;
         return face.getTextColor(zone);
     }
 
+    @Override
     public int getZones() {
         return face.zones;
     }
 
     @Override
-    public Diameter[] getDiameters(Context context) {
+    public Diameter[] getDiameters() {
         return new Diameter[]{new Diameter(40, Dimension.CENTIMETER),
                 new Diameter(60, Dimension.CENTIMETER)};
     }
@@ -90,8 +108,9 @@ public class SpotBase extends Target {
         return bounds;
     }
 
-    public Rect getBounds(int index, Rect rect) {
-        int pos[] = facePositions[index];
+    @Override
+    public Rect getTargetBounds(Rect rect, int index) {
+        int pos[] = facePositions[index % facePositions.length];
         Rect bounds = new Rect();
         bounds.left = (int) (rect.left + recalc(rect, pos[0] - faceRadius));
         bounds.top = (int) (rect.top + recalc(rect, pos[1] - faceRadius));
@@ -110,7 +129,31 @@ public class SpotBase extends Target {
         return face.getScoringStyles();
     }
 
+    @Override
     public int getFaceCount() {
         return facePositions.length;
+    }
+
+    @Override
+    public int getWidth() {
+        return getDiff(0);
+    }
+
+    @Override
+    public int getHeight() {
+        return getDiff(1);
+    }
+
+    private int getDiff(int coordinate) {
+        int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+        for (int[] facePosition : facePositions) {
+            if (facePosition[coordinate] < min) {
+                min = facePosition[coordinate];
+            }
+            if (facePosition[coordinate] > max) {
+                max = facePosition[coordinate];
+            }
+        }
+        return max - min + faceRadius*2;
     }
 }

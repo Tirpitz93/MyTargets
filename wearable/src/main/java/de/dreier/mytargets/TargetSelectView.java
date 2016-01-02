@@ -58,7 +58,7 @@ public class TargetSelectView extends TargetViewBase {
     protected void onDraw(Canvas canvas) {
         int curZone;
         if (currentArrow < round.arrowsPerPasse) {
-            curZone = mPasse.shot[currentArrow].zone;
+            curZone = passe.shot[currentArrow].zone;
         } else {
             curZone = -2;
         }
@@ -70,11 +70,12 @@ public class TargetSelectView extends TargetViewBase {
         // Draw all possible points in a circular
         for (int i = -1; i < mZoneCount; i++) {
             Coordinate coord = getCircularCoords(i);
-            mCircle.draw(canvas, coord.x, coord.y, i, i == curZone ? 23 : 17, false);
+            mCircle.draw(canvas, coord.x, coord.y, i, i == curZone ? 23 : 17, false, currentArrow,
+                    -1);
         }
 
         // Draw all points of this passe in the center
-        mPasseDrawer.draw(canvas);
+        passeDrawer.draw(canvas);
     }
 
     private Coordinate getCircularCoords(int zone) {
@@ -91,7 +92,7 @@ public class TargetSelectView extends TargetViewBase {
 
     @Override
     protected Coordinate initAnimationPositions(int i) {
-        return getCircularCoords(mPasse.shot[currentArrow].zone);
+        return getCircularCoords(passe.shot[currentArrow].zone);
     }
 
     @Override
@@ -103,13 +104,13 @@ public class TargetSelectView extends TargetViewBase {
         rect.right = radius + 35 * density;
         rect.top = radius / 2;
         rect.bottom = radius;
-        mPasseDrawer.animateToRect(rect);
+        passeDrawer.animateToRect(rect);
     }
 
     @Override
     protected Shot getShotFromPos(float x, float y) {
-        int rings = round.target.getZones(); //TODO
-        Shot s = new Shot();
+        int rings = round.target.getZones();
+        Shot s = new Shot(currentArrow);
 
         double xDiff = x - radius;
         double yDiff = y - radius;
@@ -131,7 +132,7 @@ public class TargetSelectView extends TargetViewBase {
             // Correct points_zone
             s.zone = Shot.MISS;
         }
-        s.x = round.target.zoneToX(s.zone);
+        s.x = round.target.getXFromZone(s.zone);
         s.y = 0f;
         return s;
     }

@@ -8,13 +8,11 @@
 package de.dreier.mytargets.activities;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
@@ -29,29 +27,30 @@ import android.view.View;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Locale;
 
 import de.dreier.mytargets.R;
 import de.dreier.mytargets.adapters.MainTabsFragmentPagerAdapter;
-import de.dreier.mytargets.fragments.NowListFragment;
-import de.dreier.mytargets.fragments.NowListFragmentBase;
+import de.dreier.mytargets.fragments.EditArrowFragment;
+import de.dreier.mytargets.fragments.EditBowFragment;
+import de.dreier.mytargets.fragments.FragmentBase;
+import de.dreier.mytargets.fragments.TrainingsFragment;
 import de.dreier.mytargets.shared.models.Arrow;
+import de.dreier.mytargets.shared.models.Bow;
 import de.dreier.mytargets.shared.models.IIdProvider;
-import de.dreier.mytargets.shared.models.IdProvider;
 
 /**
  * Shows an overview over all trying days
  */
 public class MainActivity extends AppCompatActivity
-        implements NowListFragment.OnItemSelectedListener, NowListFragmentBase.ContentListener,
+        implements FragmentBase.OnItemSelectedListener, FragmentBase.ContentListener,
         View.OnClickListener, ViewPager.OnPageChangeListener {
 
     private static boolean shownThisTime = false;
-    protected FloatingActionButton mFab;
-    protected View mNewLayout;
-    protected TextView mNewText;
+    private View mNewLayout;
+    private TextView mNewText;
     private ViewPager viewPager;
-    private MainTabsFragmentPagerAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +58,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         viewPager = (ViewPager) findViewById(R.id.viewpager);
-        adapter = new MainTabsFragmentPagerAdapter(this);
+        MainTabsFragmentPagerAdapter adapter = new MainTabsFragmentPagerAdapter(this);
         viewPager.setAdapter(adapter);
         viewPager.addOnPageChangeListener(this);
 
@@ -68,13 +67,11 @@ public class MainActivity extends AppCompatActivity
         tabLayout.setupWithViewPager(viewPager);
 
         askForHelpTranslating();
-        mFab = (FloatingActionButton) findViewById(R.id.fab);
-        mFab.setOnClickListener(this);
+        findViewById(R.id.fab).setOnClickListener(this);
         mNewLayout = findViewById(R.id.new_layout);
         mNewText = (TextView) findViewById(R.id.new_text);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
     }
 
     @Override
@@ -95,23 +92,11 @@ public class MainActivity extends AppCompatActivity
 
     private void askForHelpTranslating() {
         ArrayList<String> supportedLanguages = new ArrayList<>();
-        supportedLanguages.add("de");
-        supportedLanguages.add("en");
-        supportedLanguages.add("fr");
-        supportedLanguages.add("es");
-        supportedLanguages.add("ru");
-        supportedLanguages.add("nl");
-        supportedLanguages.add("it");
-        supportedLanguages.add("sl");
-        supportedLanguages.add("ca");
-        supportedLanguages.add("zh");
-        supportedLanguages.add("tr");
-        supportedLanguages.add("hu");
-
+        Collections.addAll(supportedLanguages, "de", "en", "fr", "es", "ru", "nl", "it", "sl", "ca",
+                "zh", "tr", "hu", "sl");
         final SharedPreferences prefs = PreferenceManager
                 .getDefaultSharedPreferences(MainActivity.this);
         boolean shown = prefs.getBoolean("translation_dialog_shown", false);
-
         String longLang = Locale.getDefault().getDisplayLanguage();
         String shortLocale = Locale.getDefault().getLanguage();
         if (!supportedLanguages.contains(shortLocale) && !shown && !shownThisTime) {
@@ -119,25 +104,19 @@ public class MainActivity extends AppCompatActivity
             final SpannableString s = new SpannableString(Html.fromHtml("If you would like " +
                     "to help make MyTargets even better by translating the app to " +
                     longLang +
-                    ", please send me an E-Mail (dreier.florian@gmail.com) " +
-                    "so I can give you access to the translation file!<br /><br />" +
+                    " visit <a href=\"https://crowdin.com/project/mytargets\">crowdin</a>!<br /><br />" +
                     "Thanks in advance :)"));
             Linkify.addLinks(s, Linkify.EMAIL_ADDRESSES);
-            AlertDialog d = new AlertDialog.Builder(this).setTitle("App translation")
+            AlertDialog d = new AlertDialog.Builder(this)
+                    .setTitle("App translation")
                     .setMessage(s)
-                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            prefs.edit().putBoolean("translation_dialog_shown", true).apply();
-                            dialog.dismiss();
-                        }
+                    .setPositiveButton("OK", (dialog, which) -> {
+                        prefs.edit().putBoolean("translation_dialog_shown", true).apply();
+                        dialog.dismiss();
                     })
-                    .setNegativeButton("Remind me later", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            shownThisTime = true;
-                            dialog.dismiss();
-                        }
+                    .setNegativeButton("Remind me later", (dialog, which) -> {
+                        shownThisTime = true;
+                        dialog.dismiss();
                     }).create();
             d.show();
             ((TextView) d.findViewById(android.R.id.message))
@@ -151,35 +130,33 @@ public class MainActivity extends AppCompatActivity
         if (viewPager.getCurrentItem() == 0) {
             i.setClass(this, SimpleFragmentActivity.EditTrainingActivity.class);
         } else if (viewPager.getCurrentItem() == 1) {
-            i.setClass(this, EditBowActivity.class);
+            i.setClass(this, SimpleFragmentActivity.EditBowActivity.class);
         } else if (viewPager.getCurrentItem() == 2) {
-            i.setClass(this, EditArrowActivity.class);
+            i.setClass(this, SimpleFragmentActivity.EditArrowActivity.class);
         }
         startActivity(i);
         overridePendingTransition(R.anim.right_in, R.anim.left_out);
     }
 
     @Override
-    public void onItemSelected(long itemId, Class<? extends IIdProvider> aClass) {
+    public void onItemSelected(IIdProvider item) {
         Intent i;
-        if (aClass.equals(Arrow.class)) {
-            i = new Intent(this, EditArrowActivity.class);
-            i.putExtra(EditArrowActivity.ARROW_ID, itemId);
+        if (item instanceof Arrow) {
+            i = new Intent(this, SimpleFragmentActivity.EditArrowActivity.class);
+            i.putExtra(EditArrowFragment.ARROW_ID, item.getId());
+        } else if (item instanceof Bow) {
+            i = new Intent(this, SimpleFragmentActivity.EditBowActivity.class);
+            i.putExtra(EditBowFragment.BOW_ID, item.getId());
         } else {
-            i = new Intent(this, EditBowActivity.class);
-            i.putExtra(EditBowActivity.BOW_ID, itemId);
+            i = new Intent(this, SimpleFragmentActivity.EditTrainingActivity.class);
+            i.putExtra(TrainingsFragment.ITEM_ID, item.getId());
         }
         startActivity(i);
         overridePendingTransition(R.anim.right_in, R.anim.left_out);
     }
 
-    @Override
-    public void onItemSelected(IdProvider e) {
-
-    }
-
-    boolean empty[] = new boolean[3];
-    int stringRes[] = new int[3];
+    private final boolean[] empty = new boolean[3];
+    private final int[] stringRes = new int[3];
 
     {
         stringRes[0] = R.string.new_training;
