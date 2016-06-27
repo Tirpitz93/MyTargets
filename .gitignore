@@ -4,3 +4,9 @@
 *.iml
 googlePlayAndroidDeveloper.json
 app/src/main/play
+.gradle
+/.idea/workspace.xml
+/.idea/libraries
+.DS_Store
+/build
+/captures
