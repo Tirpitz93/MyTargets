@@ -1,11 +1,14 @@
 package de.dreier.mytargets.shared.models;
 
+import android.net.Uri;
+
 public class Round implements IIdSettable {
     public long trainingId;
     public RoundTemplate info;
     public String comment;
     public int reachedPoints;
     long id;
+
 
     public long getId() {
         return id;
@@ -21,4 +24,6 @@ public class Round implements IIdSettable {
                 getClass().equals(another.getClass()) &&
                 id == ((Round) another).id;
     }
+
+
 }

@@ -4,8 +4,6 @@
           package="de.dreier.mytargets">
 
     <uses-sdk tools:overrideLibrary="me.oriley.homage, me.oriley.homage.recyclerview"/>
-
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="com.android.vending.BILLING"/>

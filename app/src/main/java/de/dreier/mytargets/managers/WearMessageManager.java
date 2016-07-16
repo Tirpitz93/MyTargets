@@ -113,7 +113,7 @@ public class WearMessageManager
         Passe p = Parcels.unwrap(ParcelableUtil.unmarshall(data, Passe$$Parcelable.CREATOR));
 
         if (messageEvent.getPath().equals(WearableUtils.FINISHED_INPUT)) {
-            mListener.onTargetSet(p, true);
+            mListener.onEndFinished(p, true);
         }
     }
 

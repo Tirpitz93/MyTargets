@@ -649,7 +649,7 @@ public class TargetView extends TargetViewBase {
                 .input("", passe.shot[pressed].comment, (dialog, input) -> {
                     passe.shot[pressed].comment = input.toString();
                     if (lastSetArrow + 1 >= round.arrowsPerPasse && setListener != null) {
-                        setListener.onTargetSet(new Passe(passe), false);
+                        setListener.onEndFinished(new Passe(passe), false);
                     }
                 })
                 .negativeText(android.R.string.cancel)

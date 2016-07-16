@@ -254,4 +254,5 @@
   <string name="misses">Nicht-Treffer</string>
   <string name="percentage_reached_points">Geschossene Ringe (in %%)</string>
   <string name="arrow_number_removed">Pfeilnummer gelöscht!</string>
+  <string name="end_photo">Photo</string>
 </resources>

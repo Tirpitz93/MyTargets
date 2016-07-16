@@ -118,6 +118,7 @@ if (new File('gradle.properties').exists()) {
 }
 
 dependencies {
+    compile 'com.google.code.gson:gson:2.7'
     compile "com.android.support:support-v4:$supportLibVersion"
     compile "com.android.support:appcompat-v7:$supportLibVersion"
     compile "com.android.support:design:$supportLibVersion"

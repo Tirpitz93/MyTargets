@@ -110,7 +110,7 @@ public class MainActivity extends Activity implements OnTargetSetListener,
     }
 
     @Override
-    public long onTargetSet(final Passe passe, boolean remote) {
+    public long onEndFinished(final Passe passe, boolean remote) {
         confirm.setVisibility(View.VISIBLE);
         confirm.setTotalTimeMs(2500);
         confirm.start();

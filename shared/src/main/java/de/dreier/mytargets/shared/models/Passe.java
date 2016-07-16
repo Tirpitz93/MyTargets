@@ -1,6 +1,10 @@
 package de.dreier.mytargets.shared.models;
 
+import android.net.Uri;
+
+import java.io.File;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Passe implements IIdSettable {
@@ -13,7 +17,8 @@ public class Passe implements IIdSettable {
 
     public Passe() {
     }
-
+    public LinkedList<String> photoUris;
+    public Boolean hasPhoto = false;
     public Passe(int ppp) {
         shot = new Shot[ppp];
         for (int i = 0; i < ppp; i++) {
@@ -34,6 +39,9 @@ public class Passe implements IIdSettable {
         return Arrays.asList(shot);
     }
 
+    /**
+     * sort shots by points
+     */
     public void sort() {
         Arrays.sort(shot);
         for (int i = 0; i < shot.length; i++) {
@@ -62,4 +70,33 @@ public class Passe implements IIdSettable {
     public int getReachedPoints(Target target) {
         return target.getReachedPoints(this);
     }
+
+    public void linkPhoto(String uri)
+    {
+        if (photoUris == null){
+            photoUris = new LinkedList<String>();
+        }
+        while (!photoUris.isEmpty()){
+            //remove existing photo and delete it
+            //temporary until multiple images are supported
+            File f = new File(photoUris.get(0));
+            if (f.exists()){
+                f.delete();
+            }
+
+        }
+        photoUris.add(uri);
+        hasPhoto = true;
+
+    }
+    public LinkedList<String> unlinkPhoto(int index){
+
+        photoUris.remove(index);
+        if (photoUris.isEmpty()){
+            hasPhoto = false;
+        }
+        return photoUris;
+    }
+    public Boolean getPhotoStatus(){return hasPhoto;}
+    public LinkedList<String> getPhotoUris(){return photoUris;}
 }

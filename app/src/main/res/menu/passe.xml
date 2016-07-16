@@ -31,4 +31,9 @@
         android:icon="@drawable/ic_grain_24dp"
         android:title="@string/timer"
         app:showAsAction="ifRoom|withText"/>
+    <item
+        android:id="@+id/action_add_photo"
+        android:icon="@drawable/ic_camera_alt_white_24dp"
+        android:title="@string/end_photo"
+        app:showAsAction="ifRoom"/>
 </menu>

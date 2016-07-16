@@ -8,12 +8,18 @@ package de.dreier.mytargets.managers.dao;
 
 import android.content.ContentValues;
 import android.database.Cursor;
+import android.net.Uri;
 
 import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +28,7 @@ import de.dreier.mytargets.shared.models.Round;
 import de.dreier.mytargets.shared.models.Shot;
 import de.dreier.mytargets.shared.models.Target;
 import de.dreier.mytargets.utils.Pair;
+import de.dreier.mytargets.utils.tUtils;
 
 public class PasseDataSource extends IdProviderDataSource<Passe> {
     private static final String TABLE = "PASSE";
@@ -46,6 +53,7 @@ public class PasseDataSource extends IdProviderDataSource<Passe> {
         for (Shot shot : item.shot) {
             sds.update(shot);
         }
+
     }
 
     @Override
@@ -63,26 +71,33 @@ public class PasseDataSource extends IdProviderDataSource<Passe> {
         ContentValues values = new ContentValues();
         values.put(ROUND, passe.roundId);
         values.put(EXACT, passe.exact ? 1 : 0);
+        tUtils.dl("saving photoUris...: " + new Gson().toJson(passe.photoUris));
+
+        values.put(IMAGE, new Gson().toJson(passe.photoUris));
+        tUtils.dl(values.get(IMAGE).toString());
         return values;
     }
 
     public Passe get(long round, int passe) {
         Cursor cursor = database
-                .rawQuery("SELECT _id FROM PASSE WHERE round = " + round + " ORDER BY _id ASC",
+                .rawQuery("SELECT _id, image FROM PASSE WHERE round = " + round + " ORDER BY _id ASC",
                         null);
         if (!cursor.moveToPosition(passe)) {
             return null;
         }
         long passeId = cursor.getLong(0);
+
         cursor.close();
         Passe p = get(passeId);
+
         p.index = passe;
         return p;
     }
 
+
     private Passe get(long passeId) {
         Cursor res = database.rawQuery(
-                "SELECT s._id, s.passe, s.points, s.x, s.y, s.comment, s.arrow, s.arrow_index, p.exact " +
+                "SELECT s._id, s.passe, s.points, s.x, s.y, s.comment, s.arrow, s.arrow_index, p.exact, p.image " +
                         "FROM SHOOT s, PASSE p " +
                         "WHERE s.passe=p._id " +
                         "AND p._id=" + passeId + " " +
@@ -94,6 +109,37 @@ public class PasseDataSource extends IdProviderDataSource<Passe> {
         p.setId(passeId);
         p.index = -1;
         p.exact = res.getInt(8) == 1;
+
+
+        tUtils.dl("loading photoUris...");
+        //tUtils.dl("query has contents: "+ res.getColumnCount());
+        //tUtils.dl("loading photoUris 2...: "+ res.getString(9));
+        String listString = res.getString(9);
+        Type lT = new TypeToken<LinkedList<String>>(){}.getType();
+        if (listString == null){
+            tUtils.dl("loaded list is null");
+        }
+        try {
+            p.photoUris = new Gson().fromJson(listString, lT);
+        }catch ( com.google.gson.JsonSyntaxException e ){
+            p.photoUris = new LinkedList<>();
+            p.hasPhoto = false;
+            update(p);
+        }
+
+        if (p.photoUris == null){
+            tUtils.dl("photoUris is null");
+
+            p.hasPhoto = false;
+            p.photoUris = new LinkedList<>();
+        }else if (p.photoUris.isEmpty()){
+            p.hasPhoto = false;
+            tUtils.dl("photoUris is empty");
+        }else {
+            p.hasPhoto = true;
+            tUtils.dl("photoUris has something: " + p.photoUris.toString());
+        }
+        //tUtils.dl(p.photoUris.toString());
         for (int i = 0; i < count; i++) {
             p.shot[i] = ShotDataSource.cursorToShot(res, i);
             res.moveToNext();
